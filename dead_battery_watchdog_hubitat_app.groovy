@@ -4,12 +4,12 @@ definition(
     author: "Dylan M",
     description: "Alert if a device's temperature hasn't changed (battery may be dead).",
     category: "Convenience",
- 	importUrl: "https://raw.githubusercontent.com/dylanmat/Dead-Battery-Watchdog/refs/heads/main/dead_battery_watchdog_hubitat_app.groovy",
-	documentationLink: "https://github.com/dylanmat/Dead-Battery-Watchdog/tree/main",
-	iconUrl: "",
-	iconX2Url: "",
-	iconX3Url: "",
-	singleInstance: false
+    importUrl: "https://raw.githubusercontent.com/dylanmat/Dead-Battery-Watchdog/refs/heads/main/dead_battery_watchdog_hubitat_app.groovy",
+    documentationLink: "https://github.com/dylanmat/Dead-Battery-Watchdog/tree/main",
+    iconUrl: "",
+    iconX2Url: "",
+    iconX3Url: "",
+    singleInstance: false
 )
 
 preferences {
