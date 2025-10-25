@@ -100,7 +100,7 @@ def checkDevices() {
             if (elapsed > thresholdMillis) {
                 def msg = "${device.displayName} may have a dead battery — no temperature change in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp}°, Last Change: ${status.lastChange}, Battery: ${status.lastBattery}%"
                 log.warn msg
-                if (sendPush) sendPushMessage(msg)
+                if (sendPush) sendNotificationEvent(msg)
             } else if (enableDebug) {
                 log.debug "${device.displayName} temp unchanged at ${status.lastTemp}° since ${status.lastChange}"
             }
