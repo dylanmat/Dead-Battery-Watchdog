@@ -17,6 +17,9 @@ preferences {
         input "scheduleInterval", "enum", title: "Check interval", options: ["15", "30", "60"], defaultValue: "60"
         input "enableDebug", "bool", title: "Enable debug logging", defaultValue: false
     }
+    section("Notification") {
+        input "sendPush", "bool", title: "Send push notification for dead battery alerts", defaultValue: true
+    }
 }
 
 def installed() {
@@ -93,9 +96,11 @@ def checkDevices() {
             status.lastBattery = currentBattery
         } else {
             def lastChangeDate = status.lastChange instanceof Date ? status.lastChange : Date.parse("yyyy-MM-dd'T'HH:mm:ssZ", status.lastChange.toString())
-			def elapsed = now.time - lastChangeDate.time
-			if (elapsed > thresholdMillis) {
-                log.warn "${device.displayName} may have a dead battery — no temperature change in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp}°, Last Change: ${status.lastChange}, Battery: ${status.lastBattery}%"
+            def elapsed = now.time - lastChangeDate.time
+            if (elapsed > thresholdMillis) {
+                def msg = "${device.displayName} may have a dead battery — no temperature change in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp}°, Last Change: ${status.lastChange}, Battery: ${status.lastBattery}%"
+                log.warn msg
+                if (sendPush) sendPushMessage(msg)
             } else if (enableDebug) {
                 log.debug "${device.displayName} temp unchanged at ${status.lastTemp}° since ${status.lastChange}"
             }
