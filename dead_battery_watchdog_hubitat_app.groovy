@@ -34,18 +34,18 @@ preferences {
 }
 
 def installed() {
-    log.debug "${APP_NAME} v${APP_VERSION} (${APP_BRANCH}) installed ${APP_UPDATED}"
+    log.debug "$APP_NAME v$APP_VERSION ($APP_BRANCH) installed $APP_UPDATED"
     initialize()
 }
 
 def updated() {
-    log.debug "${APP_NAME} v${APP_VERSION} (${APP_BRANCH}) updated ${APP_UPDATED}"
+    log.debug "$APP_NAME v$APP_VERSION ($APP_BRANCH) updated $APP_UPDATED"
     unschedule()
     initialize()
 }
 
 def initialize() {
-    if (enableDebug) log.debug "Initializing ${APP_NAME}..."
+    if (enableDebug) log.debug "Initializing $APP_NAME..."
 
     def cronExpr
     switch (scheduleInterval?.toInteger()) {
