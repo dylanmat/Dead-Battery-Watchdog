@@ -1,7 +1,7 @@
 
 def APP_NAME    = "Dead Battery Watchdog"
-def APP_VERSION = "1.1.1"
-def APP_BRANCH  = "main"          // or "feature-dimmer-rise-tuning"
+def APP_VERSION = "1.1.2"
+def APP_BRANCH  = "main"          // "main"
 def APP_UPDATED = "2025-10-25"    // ISO date is clean
 
 definition(
@@ -10,7 +10,7 @@ definition(
     author: "Dylan M",
     description: "Alert if a device's temperature hasn't changed (battery may be dead).",
     category: "Convenience",
-    version: "${APP_VERSION}"
+    version: "${APP_VERSION}",
     importUrl: "https://raw.githubusercontent.com/dylanmat/Dead-Battery-Watchdog/refs/heads/${APP_BRANCH}/dead_battery_watchdog_hubitat_app.groovy",
     documentationLink: "https://github.com/dylanmat/Dead-Battery-Watchdog",
     iconUrl: "",
