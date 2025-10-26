@@ -1,7 +1,7 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "1.1.3"
+@Field final String APP_VERSION = "1.2.0"
 @Field final String APP_BRANCH  = "main"          // "main"
 @Field final String APP_UPDATED = "2025-10-25"    // ISO date is clean
 
@@ -31,6 +31,7 @@ preferences {
     }
     section("Notification") {
         input "sendPush", "bool", title: "Send push notification for dead battery alerts", defaultValue: true
+        input "notifierDevice", "capability.notification", title: "Notification Device", required: false
     }
 }
 
@@ -112,7 +113,11 @@ def checkDevices() {
             if (elapsed > thresholdMillis) {
                 def msg = "${device.displayName} may have a dead battery — no temperature change in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp}°, Last Change: ${status.lastChange}, Battery: ${status.lastBattery}%"
                 log.warn msg
-                if (sendPush) sendNotificationEvent(msg)
+                if (sendPush && notifierDevice) {
+                    notifierDevice.deviceNotification(msg)
+                } else if (sendPush) {
+                    log.warn "Push enabled but no notifier device selected."
+                }
             } else if (enableDebug) {
                 log.debug "${device.displayName} temp unchanged at ${status.lastTemp}° since ${status.lastChange}"
             }
