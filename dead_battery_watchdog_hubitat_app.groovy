@@ -1,8 +1,9 @@
+import groovy.transform.Field
 
-def APP_NAME    = "Dead Battery Watchdog"
-def APP_VERSION = "1.1.2"
-def APP_BRANCH  = "main"          // "main"
-def APP_UPDATED = "2025-10-25"    // ISO date is clean
+@Field final String APP_NAME    = "Dead Battery Watchdog"
+@Field final String APP_VERSION = "1.1.3"
+@Field final String APP_BRANCH  = "main"          // "main"
+@Field final String APP_UPDATED = "2025-10-25"    // ISO date is clean
 
 definition(
     name: APP_NAME,
@@ -34,12 +35,12 @@ preferences {
 }
 
 def installed() {
-    log.debug "$APP_NAME v$APP_VERSION ($APP_BRANCH) installed $APP_UPDATED"
+    log.debug "${APP_NAME} v${APP_VERSION} (${APP_BRANCH}) installed ${APP_UPDATED}"
     initialize()
 }
 
 def updated() {
-    log.debug "$APP_NAME v$APP_VERSION ($APP_BRANCH) updated $APP_UPDATED"
+    log.debug "${APP_NAME} v${APP_VERSION} (${APP_BRANCH}) updated ${APP_UPDATED}"
     unschedule()
     initialize()
 }
