@@ -1,11 +1,18 @@
+
+def APP_NAME    = "Dead Battery Watchdog"
+def APP_VERSION = "1.1.1"
+def APP_BRANCH  = "main"          // or "feature-dimmer-rise-tuning"
+def APP_UPDATED = "2025-10-25"    // ISO date is clean
+
 definition(
-    name: "Dead Battery Watchdog",
-    namespace: "dylanm.dbw",
+    name: APP_NAME,
+    namespace: "dylanm.dbw.${APP_BRANCH}",
     author: "Dylan M",
     description: "Alert if a device's temperature hasn't changed (battery may be dead).",
     category: "Convenience",
-    importUrl: "https://raw.githubusercontent.com/dylanmat/Dead-Battery-Watchdog/refs/heads/main/dead_battery_watchdog_hubitat_app.groovy",
-    documentationLink: "https://github.com/dylanmat/Dead-Battery-Watchdog/tree/main",
+    version: "${APP_VERSION}"
+    importUrl: "https://raw.githubusercontent.com/dylanmat/Dead-Battery-Watchdog/refs/heads/${APP_BRANCH}/dead_battery_watchdog_hubitat_app.groovy",
+    documentationLink: "https://github.com/dylanmat/Dead-Battery-Watchdog",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -27,18 +34,18 @@ preferences {
 }
 
 def installed() {
-    log.debug "App installed"
+    log.debug "${APP_NAME} v${APP_VERSION} (${APP_BRANCH}) installed ${APP_UPDATED}"
     initialize()
 }
 
 def updated() {
-    log.debug "App updated"
+    log.debug "${APP_NAME} v${APP_VERSION} (${APP_BRANCH}) updated ${APP_UPDATED}"
     unschedule()
     initialize()
 }
 
 def initialize() {
-    if (enableDebug) log.debug "Initializing Dead Battery Watchdog..."
+    if (enableDebug) log.debug "Initializing ${APP_NAME}..."
 
     def cronExpr
     switch (scheduleInterval?.toInteger()) {
