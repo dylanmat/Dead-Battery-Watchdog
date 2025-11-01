@@ -1,9 +1,9 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "1.2.0"
+@Field final String APP_VERSION = "1.2.1"
 @Field final String APP_BRANCH  = "main"          // "main"
-@Field final String APP_UPDATED = "2025-10-25"    // ISO date is clean
+@Field final String APP_UPDATED = "2025-11-01"    // ISO date is clean
 
 definition(
     name: APP_NAME,
@@ -75,7 +75,8 @@ def initialize() {
         state.deviceStatus[device.id] = [
             lastTemp: temp,
             lastChange: now,
-            lastBattery: battery
+            lastBattery: battery,
+            lastAlert: null
         ]
         if (enableDebug) log.debug "Initial state for ${device.displayName}: ${temp}° @ ${now}, battery: ${battery}%"
     }
@@ -99,7 +100,8 @@ def checkDevices() {
         def status = state.deviceStatus[device.id] ?: [
             lastTemp: currentTemp,
             lastChange: now,
-            lastBattery: currentBattery
+            lastBattery: currentBattery,
+            lastAlert: null
         ]
 
         if (currentTemp != status.lastTemp) {
@@ -107,16 +109,26 @@ def checkDevices() {
             status.lastTemp = currentTemp
             status.lastChange = now
             status.lastBattery = currentBattery
+            status.lastAlert = null
         } else {
             def lastChangeDate = status.lastChange instanceof Date ? status.lastChange : Date.parse("yyyy-MM-dd'T'HH:mm:ssZ", status.lastChange.toString())
             def elapsed = now.time - lastChangeDate.time
+            def lastAlertDate = status.lastAlert ? (status.lastAlert instanceof Date ? status.lastAlert : Date.parse("yyyy-MM-dd'T'HH:mm:ssZ", status.lastAlert.toString())) : null
+            def alertCooldownMillis = 24 * 60 * 60 * 1000
+
             if (elapsed > thresholdMillis) {
-                def msg = "${device.displayName} may have a dead battery — no temperature change in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp}°, Last Change: ${status.lastChange}, Battery: ${status.lastBattery}%"
-                log.warn msg
-                if (sendPush && notifierDevice) {
-                    notifierDevice.deviceNotification(msg)
-                } else if (sendPush) {
-                    log.warn "Push enabled but no notifier device selected."
+                if (!lastAlertDate || now.time - lastAlertDate.time >= alertCooldownMillis) {
+                    def msg = "${device.displayName} may have a dead battery — no temperature change in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp}°, Last Change: ${status.lastChange}, Battery: ${status.lastBattery}%"
+                    log.warn msg
+                    if (sendPush && notifierDevice) {
+                        notifierDevice.deviceNotification(msg)
+                    } else if (sendPush) {
+                        log.warn "Push enabled but no notifier device selected."
+                    }
+                    status.lastAlert = now
+                } else if (enableDebug) {
+                    def hoursSinceAlert = ((now.time - lastAlertDate.time) / 3600000).toInteger()
+                    log.debug "${device.displayName} alert suppressed — last notification sent ${hoursSinceAlert} hours ago."
                 }
             } else if (enableDebug) {
                 log.debug "${device.displayName} temp unchanged at ${status.lastTemp}° since ${status.lastChange}"
