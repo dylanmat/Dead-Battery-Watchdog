@@ -1,30 +1,47 @@
 # Dead Battery Watchdog
 
-Dead Battery Watchdog is a Hubitat safety net that checks your temperature sensors for stalled readings so you can swap batteries before a device goes silent.
+Dead Battery Watchdog is a Hubitat app that monitors temperature-capable devices to catch sensors that have likely lost power. When a device stops reporting new temperature values, the app sends a notification so you can replace the battery before the device is needed.
 
 ## Installation
-1. Open the **Apps Code** section of your Hubitat Elevation hub.
-2. Click **New App** and paste the contents of `dead_battery_watchdog_hubitat_app.groovy` from this repository.
-3. Save the app, then click **Load New App** (or the equivalent option) to install it.
-4. Give the app any required permissions when prompted.
 
-## Usage
-1. In the app, choose every device with the `Temperature Measurement` capability that you want to monitor.
-2. Set the number of hours that a sensor may report the exact same temperature before the app raises an alert. The default is 24 hours.
-3. Pick how frequently Hubitat should run the health check (15, 30, or 60 minutes).
-4. Enable debug logging when you want detailed information in your hub logs.
-5. (Optional) Select a notifier device if you want push notifications in addition to the hub event log.
+1. In Hubitat, open **Apps Code** and choose **+ New App**.
+2. Paste the contents of [`dead_battery_watchdog_hubitat_app.groovy`](dead_battery_watchdog_hubitat_app.groovy) into the editor and save.
+3. Click **Apps** → **+ Add User App** and select **Dead Battery Watchdog**.
+4. Configure the app (see below) and click **Done** to activate monitoring.
 
-### What to expect
-- The app saves the most recent temperature and battery value for each device.
-- Every scheduled run compares the current temperature to the last recorded value. If the value has not changed for longer than your threshold the app logs a warning and, if configured, sends a push notification.
-- When a temperature changes, the timer resets automatically.
+## Basic Usage
 
-## Troubleshooting
-- If you do not see any alerts, confirm that the schedule interval is running by checking the hub logs for the "checkDevices" entry.
-- Alerts require the notifier device to support `deviceNotification`. If you do not select one, the app still writes warnings to the log.
-- Delete and reinstall the app if you change a large number of monitored devices and state data becomes inconsistent.
+1. **Select devices:** Choose one or more temperature-measurement devices to watch. Devices with a `battery` attribute will have their last reported battery level included in alerts.
+2. **Pick the inactivity window:** Set how many hours a device can go without a temperature change before the app considers the battery dead. The default is 24 hours.
+3. **Decide how often to check:** Pick an interval (15, 30, or 60 minutes) for the periodic health check.
+4. **Configure notifications:** Enable push notifications and optionally pick a Hubitat Notification device. Alerts are now limited to once per device every 24 hours, avoiding overnight notification floods.
+5. **Save your changes:** After saving, the app keeps track of each device’s last temperature, the timestamp of that reading, and when the last alert was sent.
 
-## Change Log
-- **1.2.1** — Documentation refresh: clarify installation, usage, and troubleshooting steps.
-- **1.2.0** — Added scheduling options, optional push notifications, and improved debug logging.
+## Configuration Options
+
+| Setting | Description |
+| --- | --- |
+| **Temperature Devices** | The sensors whose temperature readings will be monitored. |
+| **Alert if temperature unchanged for (hours)** | The inactivity threshold that triggers a notification. |
+| **Check interval** | How frequently the app evaluates device activity (15, 30, or 60 minutes). |
+| **Enable debug logging** | Turn on detailed logs while troubleshooting. |
+| **Send push notification for dead battery alerts** | Enable or disable push notifications. |
+| **Notification Device** | Optional Hubitat notification device used to deliver alerts. |
+
+## Changelog
+
+### v1.2.1 (2025-11-01)
+- Limit repeat notifications to once every 24 hours per device to prevent alert fatigue.
+- Updated documentation with usage guidance and a historical changelog.
+
+### v1.2.0 (2025-10-25)
+- Added configurable check intervals and inactivity thresholds.
+- Included optional notification device support alongside push notifications.
+- Persist the last temperature, change timestamp, and battery level for each device.
+
+### Earlier releases
+- Initial release established temperature-based monitoring and push notifications. Historical details prior to v1.2.0 were undocumented.
+
+## License
+
+This project is released under the MIT License. See the source file headers for details.
