@@ -1,9 +1,9 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "1.2.1"
+@Field final String APP_VERSION = "1.2.2"
 @Field final String APP_BRANCH  = "main"          // "main"
-@Field final String APP_UPDATED = "2025-11-01"    // ISO date is clean
+@Field final String APP_UPDATED = "2026-02-13"    // ISO date is clean
 
 definition(
     name: APP_NAME,
@@ -111,14 +111,14 @@ def checkDevices() {
             status.lastBattery = currentBattery
             status.lastAlert = null
         } else {
-            def lastChangeDate = status.lastChange instanceof Date ? status.lastChange : Date.parse("yyyy-MM-dd'T'HH:mm:ssZ", status.lastChange.toString())
+            def lastChangeDate = asDate(status.lastChange, now)
             def elapsed = now.time - lastChangeDate.time
-            def lastAlertDate = status.lastAlert ? (status.lastAlert instanceof Date ? status.lastAlert : Date.parse("yyyy-MM-dd'T'HH:mm:ssZ", status.lastAlert.toString())) : null
+            def lastAlertDate = status.lastAlert ? asDate(status.lastAlert, null) : null
             def alertCooldownMillis = 24 * 60 * 60 * 1000
 
             if (elapsed > thresholdMillis) {
                 if (!lastAlertDate || now.time - lastAlertDate.time >= alertCooldownMillis) {
-                    def msg = "${device.displayName} may have a dead battery — no temperature change in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp}°, Last Change: ${status.lastChange}, Battery: ${status.lastBattery}%"
+                    def msg = "${device.displayName} may have a dead battery — no temperature change in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp}°, Last Change: ${formatLogTimestamp(lastChangeDate)}, Battery: ${status.lastBattery}%"
                     log.warn msg
                     if (sendPush && notifierDevice) {
                         notifierDevice.deviceNotification(msg)
@@ -131,10 +131,28 @@ def checkDevices() {
                     log.debug "${device.displayName} alert suppressed — last notification sent ${hoursSinceAlert} hours ago."
                 }
             } else if (enableDebug) {
-                log.debug "${device.displayName} temp unchanged at ${status.lastTemp}° since ${status.lastChange}"
+                log.debug "${device.displayName} temp unchanged at ${status.lastTemp}° since ${formatLogTimestamp(lastChangeDate)}"
             }
         }
 
         state.deviceStatus[device.id] = status
     }
+}
+
+private Date asDate(def value, Date fallback = null) {
+    if (value instanceof Date) return value
+    if (value == null) return fallback
+
+    String stringValue = value.toString()
+    try {
+        return Date.parse("yyyy-MM-dd'T'HH:mm:ssZ", stringValue)
+    } catch (ignored) {
+        return fallback
+    }
+}
+
+private String formatLogTimestamp(Date date) {
+    if (!date) return "unknown"
+    TimeZone tz = location?.timeZone ?: TimeZone.default
+    return date.format("yyyy-MM-dd hh:mm:ss.SSS a", tz)
 }
