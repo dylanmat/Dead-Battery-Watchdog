@@ -30,6 +30,14 @@ Dead Battery Watchdog is a Hubitat app that monitors temperature-capable devices
 
 ## Changelog
 
+### v1.2.3 (2026-02-13)
+- Format initial-state debug timestamps in the same Hubitat-style local format used by unchanged-temperature and alert logs.
+- Align `checkDevices()` run-time debug logging with the same local timestamp format for consistency.
+
+### v1.2.2 (2026-02-13)
+- Format "Last Change" timestamps in logs and alerts using Hubitat-style local time (`yyyy-MM-dd hh:mm:ss.SSS a`) to avoid UTC/local confusion.
+- Added safe timestamp parsing helper methods for persisted state values.
+
 ### v1.2.1 (2025-11-01)
 - Limit repeat notifications to once every 24 hours per device to prevent alert fatigue.
 - Updated documentation with usage guidance and a historical changelog.
