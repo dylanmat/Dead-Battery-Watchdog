@@ -1,7 +1,7 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "1.2.2"
+@Field final String APP_VERSION = "1.2.3"
 @Field final String APP_BRANCH  = "main"          // "main"
 @Field final String APP_UPDATED = "2026-02-13"    // ISO date is clean
 
@@ -78,12 +78,12 @@ def initialize() {
             lastBattery: battery,
             lastAlert: null
         ]
-        if (enableDebug) log.debug "Initial state for ${device.displayName}: ${temp}° @ ${now}, battery: ${battery}%"
+        if (enableDebug) log.debug "Initial state for ${device.displayName}: ${temp}° @ ${formatLogTimestamp(now)}, battery: ${battery}%"
     }
 }
 
 def checkDevices() {
-    log.debug "Running checkDevices() at ${new Date()}"
+    log.debug "Running checkDevices() at ${formatLogTimestamp(new Date())}"
 
     if (!temperatureDevices) {
         log.warn "No temperature devices selected."
