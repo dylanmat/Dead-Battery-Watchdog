@@ -1,15 +1,15 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "1.2.3"
+@Field final String APP_VERSION = "1.2.4"
 @Field final String APP_BRANCH  = "main"          // "main"
-@Field final String APP_UPDATED = "2026-02-13"    // ISO date is clean
+@Field final String APP_UPDATED = "2026-06-14"    // ISO date is clean
 
 definition(
     name: APP_NAME,
     namespace: "dylanm.dbw.${APP_BRANCH}",
     author: "Dylan M",
-    description: "Alert if a device's temperature hasn't changed (battery may be dead).",
+    description: "Alert if a device has stopped reporting temperature (battery may be dead).",
     category: "Convenience",
     version: "${APP_VERSION}",
     importUrl: "https://raw.githubusercontent.com/dylanmat/Dead-Battery-Watchdog/refs/heads/${APP_BRANCH}/dead_battery_watchdog_hubitat_app.groovy",
@@ -25,7 +25,7 @@ preferences {
         input "temperatureDevices", "capability.temperatureMeasurement", title: "Temperature Devices", multiple: true, required: true
     }
     section("Configuration") {
-        input "inactiveThreshold", "number", title: "Alert if temperature unchanged for (hours)", defaultValue: 24
+        input "inactiveThreshold", "number", title: "Alert if no temperature report for (hours)", defaultValue: 24
         input "scheduleInterval", "enum", title: "Check interval", options: ["15", "30", "60"], defaultValue: "60"
         input "enableDebug", "bool", title: "Enable debug logging", defaultValue: false
     }
@@ -43,6 +43,7 @@ def installed() {
 def updated() {
     log.debug "${APP_NAME} v${APP_VERSION} (${APP_BRANCH}) updated ${APP_UPDATED}"
     unschedule()
+    unsubscribe()
     initialize()
 }
 
@@ -61,24 +62,64 @@ def initialize() {
         schedule(cronExpr, "checkDevices")
         if (enableDebug) log.debug "Scheduled with cron expression: ${cronExpr}"
     } catch (e) {
-        log.error "Failed to schedule with cron: ${cronExpr} — ${e}"
+        log.error "Failed to schedule with cron: ${cronExpr} - ${e}"
     }
 
     if (!state.deviceStatus) {
         state.deviceStatus = [:]
     }
 
+    subscribe(temperatureDevices, "temperature", temperatureEventHandler)
+
     def now = new Date()
     temperatureDevices.each { device ->
+        def key = deviceKey(device)
         def temp = device.currentTemperature
-        def battery = device.hasAttribute("battery") ? device.currentValue("battery") : "N/A"
-        state.deviceStatus[device.id] = [
+        def battery = currentBatteryValue(device)
+        def existingStatus = state.deviceStatus[key] ?: state.deviceStatus[device.id] ?: [:]
+        def currentTempState = device.currentState("temperature")
+        def lastReportDate = latestDate([currentTempState?.date, existingStatus.lastReport, existingStatus.lastChange], now)
+
+        state.deviceStatus[key] = [
             lastTemp: temp,
-            lastChange: now,
+            lastReport: lastReportDate,
             lastBattery: battery,
-            lastAlert: null
+            lastAlert: existingStatus.lastAlert ?: null
         ]
-        if (enableDebug) log.debug "Initial state for ${device.displayName}: ${temp}° @ ${formatLogTimestamp(now)}, battery: ${battery}%"
+        if (enableDebug) log.debug "Initial state for ${device.displayName}: ${temp} deg @ ${formatLogTimestamp(lastReportDate)}, battery: ${battery}%"
+    }
+}
+
+def temperatureEventHandler(evt) {
+    def device = evt.device ?: temperatureDevices?.find { deviceKey(it) == evt.deviceId?.toString() }
+    def key = evt.deviceId?.toString() ?: deviceKey(device)
+
+    if (!key) {
+        log.warn "Received temperature event without a device id; event ignored."
+        return
+    }
+
+    def now = asDate(evt.date, new Date())
+    def battery = device ? currentBatteryValue(device) : "N/A"
+    def status = state.deviceStatus?.get(key) ?: [:]
+    def previousTemp = status.lastTemp
+
+    status.lastTemp = evt.value
+    status.lastReport = now
+    status.lastBattery = battery
+    status.lastAlert = null
+
+    if (!state.deviceStatus) {
+        state.deviceStatus = [:]
+    }
+    state.deviceStatus[key] = status
+
+    if (enableDebug) {
+        if (previousTemp != evt.value) {
+            log.debug "${evt.displayName} temperature report: ${previousTemp} deg -> ${evt.value} deg @ ${formatLogTimestamp(now)}"
+        } else {
+            log.debug "${evt.displayName} temperature report unchanged at ${evt.value} deg @ ${formatLogTimestamp(now)}"
+        }
     }
 }
 
@@ -94,49 +135,62 @@ def checkDevices() {
     def now = new Date()
 
     temperatureDevices.each { device ->
+        def key = deviceKey(device)
         def currentTemp = device.currentTemperature
-        def currentBattery = device.hasAttribute("battery") ? device.currentValue("battery") : "N/A"
-
-        def status = state.deviceStatus[device.id] ?: [
-            lastTemp: currentTemp,
-            lastChange: now,
-            lastBattery: currentBattery,
-            lastAlert: null
+        def currentBattery = currentBatteryValue(device)
+        def currentTempState = device.currentState("temperature")
+        def existingStatus = state.deviceStatus[key] ?: state.deviceStatus[device.id] ?: [:]
+        def status = [
+            lastTemp: existingStatus.lastTemp ?: currentTemp,
+            lastReport: latestDate([currentTempState?.date, existingStatus.lastReport, existingStatus.lastChange], now),
+            lastBattery: existingStatus.lastBattery ?: currentBattery,
+            lastAlert: existingStatus.lastAlert ?: null
         ]
 
-        if (currentTemp != status.lastTemp) {
-            if (enableDebug) log.debug "${device.displayName} temperature changed: ${status.lastTemp}° -> ${currentTemp}°"
-            status.lastTemp = currentTemp
-            status.lastChange = now
-            status.lastBattery = currentBattery
-            status.lastAlert = null
-        } else {
-            def lastChangeDate = asDate(status.lastChange, now)
-            def elapsed = now.time - lastChangeDate.time
-            def lastAlertDate = status.lastAlert ? asDate(status.lastAlert, null) : null
-            def alertCooldownMillis = 24 * 60 * 60 * 1000
+        def lastReportDate = asDate(status.lastReport, now)
+        def elapsed = now.time - lastReportDate.time
+        def lastAlertDate = status.lastAlert ? asDate(status.lastAlert, null) : null
+        def alertCooldownMillis = 24 * 60 * 60 * 1000
 
-            if (elapsed > thresholdMillis) {
-                if (!lastAlertDate || now.time - lastAlertDate.time >= alertCooldownMillis) {
-                    def msg = "${device.displayName} may have a dead battery — no temperature change in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp}°, Last Change: ${formatLogTimestamp(lastChangeDate)}, Battery: ${status.lastBattery}%"
-                    log.warn msg
-                    if (sendPush && notifierDevice) {
-                        notifierDevice.deviceNotification(msg)
-                    } else if (sendPush) {
-                        log.warn "Push enabled but no notifier device selected."
-                    }
-                    status.lastAlert = now
-                } else if (enableDebug) {
-                    def hoursSinceAlert = ((now.time - lastAlertDate.time) / 3600000).toInteger()
-                    log.debug "${device.displayName} alert suppressed — last notification sent ${hoursSinceAlert} hours ago."
+        if (elapsed > thresholdMillis) {
+            if (!lastAlertDate || now.time - lastAlertDate.time >= alertCooldownMillis) {
+                def msg = "${device.displayName} may have a dead battery - no temperature report in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp} deg, Last Report: ${formatLogTimestamp(lastReportDate)}, Battery: ${status.lastBattery}%"
+                log.warn msg
+                if (sendPush && notifierDevice) {
+                    notifierDevice.deviceNotification(msg)
+                } else if (sendPush) {
+                    log.warn "Push enabled but no notifier device selected."
                 }
+                status.lastAlert = now
             } else if (enableDebug) {
-                log.debug "${device.displayName} temp unchanged at ${status.lastTemp}° since ${formatLogTimestamp(lastChangeDate)}"
+                def hoursSinceAlert = ((now.time - lastAlertDate.time) / 3600000).toInteger()
+                log.debug "${device.displayName} alert suppressed - last notification sent ${hoursSinceAlert} hours ago."
             }
+        } else if (enableDebug) {
+            log.debug "${device.displayName} last temperature report was ${formatLogTimestamp(lastReportDate)}"
         }
 
-        state.deviceStatus[device.id] = status
+        state.deviceStatus[key] = status
     }
+}
+
+private String deviceKey(def device) {
+    return device?.id?.toString()
+}
+
+private currentBatteryValue(def device) {
+    return device?.hasAttribute("battery") ? device.currentValue("battery") : "N/A"
+}
+
+private Date latestDate(List values, Date fallback) {
+    Date latest = null
+    values.each { value ->
+        Date date = asDate(value, null)
+        if (date && (!latest || date.time > latest.time)) {
+            latest = date
+        }
+    }
+    return latest ?: fallback
 }
 
 private Date asDate(def value, Date fallback = null) {
