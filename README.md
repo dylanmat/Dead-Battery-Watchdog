@@ -11,11 +11,11 @@ Dead Battery Watchdog is a Hubitat app that monitors temperature-capable devices
 
 ## Basic Usage
 
-1. **Select devices:** Choose one or more temperature-measurement devices to watch. Devices with a `battery` attribute will have their last reported battery level included in alerts.
+1. **Select devices:** Choose one or more temperature-measurement devices to watch. Devices with a `battery` attribute will have their last reported battery level included in alerts. Devices with a `lastBattery` attribute will also include the last battery replacement date.
 2. **Pick the inactivity window:** Set how many hours a device can go without a temperature report before the app considers the battery dead. The default is 24 hours.
 3. **Decide how often to check:** Pick an interval (15, 30, or 60 minutes) for the periodic health check.
 4. **Configure notifications:** Enable push notifications and optionally pick a Hubitat Notification device. Alerts are limited to once per device every 24 hours, avoiding overnight notification floods.
-5. **Save your changes:** After saving, the app keeps track of each device's last temperature, the timestamp of its most recent temperature report, and when the last alert was sent.
+5. **Save your changes:** After saving, the app keeps track of each device's last temperature, the timestamp of its most recent temperature report, battery metadata, and when the last alert was sent.
 
 ## Configuration Options
 
@@ -29,6 +29,11 @@ Dead Battery Watchdog is a Hubitat app that monitors temperature-capable devices
 | **Notification Device** | Optional Hubitat notification device used to deliver alerts. |
 
 ## Changelog
+
+### v1.3.0 (2026-06-28)
+- Treat `lastBattery` as the Unix timestamp for the last battery replacement.
+- Include the last battery replacement date in dead battery alerts using the app's local Hubitat timestamp format.
+- Store battery percentage separately from `lastBattery` so older state does not confuse battery level with replacement time.
 
 ### v1.2.4 (2026-06-14)
 - Track the timestamp of the latest temperature report, even when the reported value is unchanged.

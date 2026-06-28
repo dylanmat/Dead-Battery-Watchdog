@@ -1,9 +1,9 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "1.2.4"
+@Field final String APP_VERSION = "1.3.0"
 @Field final String APP_BRANCH  = "main"          // "main"
-@Field final String APP_UPDATED = "2026-06-14"    // ISO date is clean
+@Field final String APP_UPDATED = "2026-06-28"    // ISO date is clean
 
 definition(
     name: APP_NAME,
@@ -75,7 +75,8 @@ def initialize() {
     temperatureDevices.each { device ->
         def key = deviceKey(device)
         def temp = device.currentTemperature
-        def battery = currentBatteryValue(device)
+        def batteryLevel = currentBatteryValue(device)
+        def lastBattery = currentLastBatteryValue(device)
         def existingStatus = state.deviceStatus[key] ?: state.deviceStatus[device.id] ?: [:]
         def currentTempState = device.currentState("temperature")
         def lastReportDate = latestDate([currentTempState?.date, existingStatus.lastReport, existingStatus.lastChange], now)
@@ -83,10 +84,11 @@ def initialize() {
         state.deviceStatus[key] = [
             lastTemp: temp,
             lastReport: lastReportDate,
-            lastBattery: battery,
+            batteryLevel: batteryLevel,
+            lastBattery: lastBattery,
             lastAlert: existingStatus.lastAlert ?: null
         ]
-        if (enableDebug) log.debug "Initial state for ${device.displayName}: ${temp} deg @ ${formatLogTimestamp(lastReportDate)}, battery: ${battery}%"
+        if (enableDebug) log.debug "Initial state for ${device.displayName}: ${temp} deg @ ${formatLogTimestamp(lastReportDate)}, battery: ${batteryLevel}%, last battery replacement: ${formatUnixTimestamp(lastBattery)}"
     }
 }
 
@@ -100,13 +102,15 @@ def temperatureEventHandler(evt) {
     }
 
     def now = asDate(evt.date, new Date())
-    def battery = device ? currentBatteryValue(device) : "N/A"
+    def batteryLevel = device ? currentBatteryValue(device) : "N/A"
+    def lastBattery = device ? currentLastBatteryValue(device) : null
     def status = state.deviceStatus?.get(key) ?: [:]
     def previousTemp = status.lastTemp
 
     status.lastTemp = evt.value
     status.lastReport = now
-    status.lastBattery = battery
+    status.batteryLevel = batteryLevel
+    status.lastBattery = lastBattery
     status.lastAlert = null
 
     if (!state.deviceStatus) {
@@ -137,13 +141,15 @@ def checkDevices() {
     temperatureDevices.each { device ->
         def key = deviceKey(device)
         def currentTemp = device.currentTemperature
-        def currentBattery = currentBatteryValue(device)
+        def currentBatteryLevel = currentBatteryValue(device)
+        def currentLastBattery = currentLastBatteryValue(device)
         def currentTempState = device.currentState("temperature")
         def existingStatus = state.deviceStatus[key] ?: state.deviceStatus[device.id] ?: [:]
         def status = [
             lastTemp: existingStatus.lastTemp ?: currentTemp,
             lastReport: latestDate([currentTempState?.date, existingStatus.lastReport, existingStatus.lastChange], now),
-            lastBattery: existingStatus.lastBattery ?: currentBattery,
+            batteryLevel: existingStatus.batteryLevel ?: currentBatteryLevel,
+            lastBattery: currentLastBattery,
             lastAlert: existingStatus.lastAlert ?: null
         ]
 
@@ -154,7 +160,7 @@ def checkDevices() {
 
         if (elapsed > thresholdMillis) {
             if (!lastAlertDate || now.time - lastAlertDate.time >= alertCooldownMillis) {
-                def msg = "${device.displayName} may have a dead battery - no temperature report in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp} deg, Last Report: ${formatLogTimestamp(lastReportDate)}, Battery: ${status.lastBattery}%"
+                def msg = "${device.displayName} may have a dead battery - no temperature report in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp} deg, Last Report: ${formatLogTimestamp(lastReportDate)}, Battery: ${status.batteryLevel}%, Last Battery Replacement: ${formatUnixTimestamp(status.lastBattery)}"
                 log.warn msg
                 if (sendPush && notifierDevice) {
                     notifierDevice.deviceNotification(msg)
@@ -180,6 +186,10 @@ private String deviceKey(def device) {
 
 private currentBatteryValue(def device) {
     return device?.hasAttribute("battery") ? device.currentValue("battery") : "N/A"
+}
+
+private currentLastBatteryValue(def device) {
+    return device?.hasAttribute("lastBattery") ? device.currentValue("lastBattery") : null
 }
 
 private Date latestDate(List values, Date fallback) {
@@ -209,4 +219,32 @@ private String formatLogTimestamp(Date date) {
     if (!date) return "unknown"
     TimeZone tz = location?.timeZone ?: TimeZone.default
     return date.format("yyyy-MM-dd hh:mm:ss.SSS a", tz)
+}
+
+private String formatUnixTimestamp(def value) {
+    Long unixTime = asLong(value)
+    if (!unixTime || unixTime <= 0) return "N/A"
+
+    if (unixTime < 100000000000L) {
+        if (unixTime < 946684800L) return "N/A"
+        unixTime = unixTime * 1000
+    } else if (unixTime < 946684800000L) {
+        return "N/A"
+    }
+
+    return formatLogTimestamp(new Date(unixTime))
+}
+
+private Long asLong(def value) {
+    if (value instanceof Number) return value.toLong()
+    if (value == null) return null
+
+    String stringValue = value.toString()?.trim()
+    if (!stringValue) return null
+
+    try {
+        return stringValue.toLong()
+    } catch (ignored) {
+        return null
+    }
 }
