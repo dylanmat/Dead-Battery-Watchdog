@@ -1,6 +1,6 @@
 # Dead Battery Watchdog
 
-Dead Battery Watchdog is a Hubitat app that monitors temperature-capable devices to catch sensors that have likely lost power. When a device stops reporting temperature events, the app sends a notification so you can replace the battery before the device is needed.
+Dead Battery Watchdog is a Hubitat app that monitors selected devices to catch sensors that have likely stopped reporting. When a monitored device stops sending supported Hubitat events, the app sends a notification so you can investigate the battery, range, sleep state, or Zigbee routing before the device is needed.
 
 ## Installation
 
@@ -11,18 +11,18 @@ Dead Battery Watchdog is a Hubitat app that monitors temperature-capable devices
 
 ## Basic Usage
 
-1. **Select devices:** Choose one or more temperature-measurement devices to watch. Devices with a `battery` attribute will have their last reported battery level included in alerts. Devices with a `lastBattery` attribute will also include the last battery replacement date.
-2. **Pick the inactivity window:** Set how many hours a device can go without a temperature report before the app considers the battery dead. The default is 24 hours.
+1. **Select devices:** Choose one or more devices to watch. The app listens for common device events including temperature, humidity, contact, motion, acceleration, water, battery, button, switch, lock, presence, and activity events.
+2. **Pick the inactivity window:** Set how many hours a device can go without any monitored event before the app alerts. The default is 24 hours.
 3. **Decide how often to check:** Pick an interval (15, 30, or 60 minutes) for the periodic health check.
 4. **Configure notifications:** Enable push notifications and optionally pick a Hubitat Notification device. Alerts are limited to once per device every 24 hours, avoiding overnight notification floods.
-5. **Save your changes:** After saving, the app keeps track of each device's last temperature, the timestamp of its most recent temperature report, battery metadata, and when the last alert was sent.
+5. **Save your changes:** After saving, the app keeps track of each device's most recent monitored event, optional temperature context, battery metadata, and when the last alert was sent.
 
 ## Configuration Options
 
 | Setting | Description |
 | --- | --- |
-| **Temperature Devices** | The sensors whose temperature reports will be monitored. |
-| **Alert if no temperature report for (hours)** | The inactivity threshold that triggers a notification. |
+| **Monitored Devices** | The devices whose supported Hubitat events will be monitored. |
+| **Alert if no device event for (hours)** | The inactivity threshold that triggers a notification. |
 | **Check interval** | How frequently the app evaluates device activity (15, 30, or 60 minutes). |
 | **Enable debug logging** | Turn on detailed logs while troubleshooting. |
 | **Send push notification for dead battery alerts** | Enable or disable push notifications. |
@@ -30,11 +30,18 @@ Dead Battery Watchdog is a Hubitat app that monitors temperature-capable devices
 
 ## Roadmap
 
-The current v1 app uses temperature reports as the signal for likely dead battery devices. The planned v2 direction broadens this into event-based Zigbee device health monitoring, where the app tracks any event as proof of life, tracks primary device functions separately, and reports stale attributes without calling the whole device dead.
+The current v2.0 app uses common Hubitat device events as the signal for likely dead, asleep, out-of-range, or non-reporting devices. Future v2 stages will track primary device functions separately and report stale attributes without calling the whole device dead.
 
-See [ROADMAP.md](ROADMAP.md) for the staged v2.0 through v2.7 plan.
+See [ROADMAP.md](ROADMAP.md) for the staged v2.0 through v2.8 plan.
 
 ## Changelog
+
+### v2.0.0 (2026-06-29)
+- Track `lastAnyEvent` for each monitored device and use it as the liveness signal for alerts.
+- Broaden monitoring from temperature-only devices to selected monitored devices with supported Hubitat event attributes.
+- Include last event name, value, and timestamp in alerts while keeping temperature, battery level, and last battery replacement as optional context.
+- Preserve existing v1 temperature state by migrating `lastReport` and `lastChange` into the new event-based state when needed.
+- Keep battery percentage as supporting context only; polling the current battery value does not prove the device is alive.
 
 ### v1.3.0 (2026-06-28)
 - Treat `lastBattery` as the Unix timestamp for the last battery replacement.

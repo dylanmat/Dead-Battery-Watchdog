@@ -1,15 +1,37 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "1.3.0"
+@Field final String APP_VERSION = "2.0.0"
 @Field final String APP_BRANCH  = "main"          // "main"
-@Field final String APP_UPDATED = "2026-06-28"    // ISO date is clean
+@Field final String APP_UPDATED = "2026-06-29"    // ISO date is clean
+@Field final List<String> MONITORED_ATTRIBUTES = [
+    "temperature",
+    "humidity",
+    "contact",
+    "motion",
+    "acceleration",
+    "water",
+    "battery",
+    "pushed",
+    "held",
+    "released",
+    "doubleTapped",
+    "switch",
+    "lock",
+    "presence",
+    "activity",
+    "tamper",
+    "illuminance",
+    "smoke",
+    "carbonMonoxide",
+    "powerSource"
+]
 
 definition(
     name: APP_NAME,
     namespace: "dylanm.dbw.${APP_BRANCH}",
     author: "Dylan M",
-    description: "Alert if a device has stopped reporting temperature (battery may be dead).",
+    description: "Alert if a monitored device has stopped reporting events.",
     category: "Convenience",
     version: "${APP_VERSION}",
     importUrl: "https://raw.githubusercontent.com/dylanmat/Dead-Battery-Watchdog/refs/heads/${APP_BRANCH}/dead_battery_watchdog_hubitat_app.groovy",
@@ -22,10 +44,10 @@ definition(
 
 preferences {
     section("Select devices to monitor") {
-        input "temperatureDevices", "capability.temperatureMeasurement", title: "Temperature Devices", multiple: true, required: true
+        input "monitoredDevices", "capability.*", title: "Monitored Devices", multiple: true, required: false
     }
     section("Configuration") {
-        input "inactiveThreshold", "number", title: "Alert if no temperature report for (hours)", defaultValue: 24
+        input "inactiveThreshold", "number", title: "Alert if no device event for (hours)", defaultValue: 24
         input "scheduleInterval", "enum", title: "Check interval", options: ["15", "30", "60"], defaultValue: "60"
         input "enableDebug", "bool", title: "Enable debug logging", defaultValue: false
     }
@@ -69,35 +91,48 @@ def initialize() {
         state.deviceStatus = [:]
     }
 
-    subscribe(temperatureDevices, "temperature", temperatureEventHandler)
+    def devices = monitoredDeviceList()
+    devices.each { device ->
+        MONITORED_ATTRIBUTES.each { attributeName ->
+            if (hasAttribute(device, attributeName)) {
+                subscribe(device, attributeName, deviceEventHandler)
+            }
+        }
+    }
 
     def now = new Date()
-    temperatureDevices.each { device ->
+    devices.each { device ->
         def key = deviceKey(device)
-        def temp = device.currentTemperature
+        def temp = currentTemperatureValue(device)
         def batteryLevel = currentBatteryValue(device)
         def lastBattery = currentLastBatteryValue(device)
         def existingStatus = state.deviceStatus[key] ?: state.deviceStatus[device.id] ?: [:]
         def currentTempState = device.currentState("temperature")
         def lastReportDate = latestDate([currentTempState?.date, existingStatus.lastReport, existingStatus.lastChange], now)
+        def currentEventState = mostRecentCurrentState(device)
+        def lastAnyEventDate = latestDate([currentEventState?.date, existingStatus.lastAnyEvent, existingStatus.lastReport, existingStatus.lastChange], now)
 
         state.deviceStatus[key] = [
             lastTemp: temp,
             lastReport: lastReportDate,
             batteryLevel: batteryLevel,
             lastBattery: lastBattery,
+            lastAnyEvent: lastAnyEventDate,
+            lastEventName: existingStatus.lastEventName ?: currentEventState?.name,
+            lastEventValue: valueOrDefault(existingStatus.lastEventValue, currentEventState?.value),
+            lastEventDisplayName: existingStatus.lastEventDisplayName ?: null,
             lastAlert: existingStatus.lastAlert ?: null
         ]
-        if (enableDebug) log.debug "Initial state for ${device.displayName}: ${temp} deg @ ${formatLogTimestamp(lastReportDate)}, battery: ${batteryLevel}%, last battery replacement: ${formatUnixTimestamp(lastBattery)}"
+        if (enableDebug) log.debug "Initial state for ${device.displayName}: last event @ ${formatLogTimestamp(lastAnyEventDate)}, temperature: ${formatOptionalValue(temp, ' deg')}, battery: ${formatOptionalValue(batteryLevel, '%')}, last battery replacement: ${formatUnixTimestamp(lastBattery)}"
     }
 }
 
-def temperatureEventHandler(evt) {
-    def device = evt.device ?: temperatureDevices?.find { deviceKey(it) == evt.deviceId?.toString() }
+def deviceEventHandler(evt) {
+    def device = evt.device ?: monitoredDeviceList()?.find { deviceKey(it) == evt.deviceId?.toString() }
     def key = evt.deviceId?.toString() ?: deviceKey(device)
 
     if (!key) {
-        log.warn "Received temperature event without a device id; event ignored."
+        log.warn "Received device event without a device id; event ignored."
         return
     }
 
@@ -107,11 +142,21 @@ def temperatureEventHandler(evt) {
     def status = state.deviceStatus?.get(key) ?: [:]
     def previousTemp = status.lastTemp
 
-    status.lastTemp = evt.value
-    status.lastReport = now
+    status.lastAnyEvent = now
+    status.lastEventName = evt.name
+    status.lastEventValue = evt.value
+    status.lastEventDisplayName = evt.displayName
     status.batteryLevel = batteryLevel
     status.lastBattery = lastBattery
     status.lastAlert = null
+
+    if (evt.name == "temperature") {
+        status.lastTemp = evt.value
+        status.lastReport = now
+    } else {
+        status.lastTemp = status.lastTemp
+        status.lastReport = status.lastReport
+    }
 
     if (!state.deviceStatus) {
         state.deviceStatus = [:]
@@ -119,10 +164,12 @@ def temperatureEventHandler(evt) {
     state.deviceStatus[key] = status
 
     if (enableDebug) {
-        if (previousTemp != evt.value) {
-            log.debug "${evt.displayName} temperature report: ${previousTemp} deg -> ${evt.value} deg @ ${formatLogTimestamp(now)}"
+        if (evt.name == "temperature" && previousTemp != evt.value) {
+            log.debug "${evt.displayName} temperature event: ${previousTemp} deg -> ${evt.value} deg @ ${formatLogTimestamp(now)}"
+        } else if (evt.name == "temperature") {
+            log.debug "${evt.displayName} temperature event unchanged at ${evt.value} deg @ ${formatLogTimestamp(now)}"
         } else {
-            log.debug "${evt.displayName} temperature report unchanged at ${evt.value} deg @ ${formatLogTimestamp(now)}"
+            log.debug "${evt.displayName} ${evt.name} event: ${evt.value} @ ${formatLogTimestamp(now)}"
         }
     }
 }
@@ -130,37 +177,44 @@ def temperatureEventHandler(evt) {
 def checkDevices() {
     log.debug "Running checkDevices() at ${formatLogTimestamp(new Date())}"
 
-    if (!temperatureDevices) {
-        log.warn "No temperature devices selected."
+    def devices = monitoredDeviceList()
+    if (!devices) {
+        log.warn "No monitored devices selected."
         return
     }
 
     def thresholdMillis = (inactiveThreshold ?: 24) * 60 * 60 * 1000
     def now = new Date()
 
-    temperatureDevices.each { device ->
+    devices.each { device ->
         def key = deviceKey(device)
-        def currentTemp = device.currentTemperature
-        def currentBatteryLevel = currentBatteryValue(device)
+        def currentTemp = currentTemperatureValue(device)
         def currentLastBattery = currentLastBatteryValue(device)
         def currentTempState = device.currentState("temperature")
         def existingStatus = state.deviceStatus[key] ?: state.deviceStatus[device.id] ?: [:]
+        def currentEventState = mostRecentCurrentState(device)
+        def lastReportDate = latestDate([currentTempState?.date, existingStatus.lastReport, existingStatus.lastChange], null)
+        def lastAnyEventDate = latestDate([existingStatus.lastAnyEvent, currentEventState?.date, lastReportDate, existingStatus.lastChange], now)
         def status = [
-            lastTemp: existingStatus.lastTemp ?: currentTemp,
-            lastReport: latestDate([currentTempState?.date, existingStatus.lastReport, existingStatus.lastChange], now),
-            batteryLevel: existingStatus.batteryLevel ?: currentBatteryLevel,
+            lastTemp: valueOrDefault(existingStatus.lastTemp, currentTemp),
+            lastReport: lastReportDate,
             lastBattery: currentLastBattery,
+            batteryLevel: valueOrDefault(existingStatus.batteryLevel, currentBatteryValue(device)),
+            lastAnyEvent: lastAnyEventDate,
+            lastEventName: existingStatus.lastEventName ?: currentEventState?.name,
+            lastEventValue: valueOrDefault(existingStatus.lastEventValue, currentEventState?.value),
+            lastEventDisplayName: existingStatus.lastEventDisplayName ?: null,
             lastAlert: existingStatus.lastAlert ?: null
         ]
 
-        def lastReportDate = asDate(status.lastReport, now)
-        def elapsed = now.time - lastReportDate.time
+        def lastAnyEvent = asDate(status.lastAnyEvent, now)
+        def elapsed = now.time - lastAnyEvent.time
         def lastAlertDate = status.lastAlert ? asDate(status.lastAlert, null) : null
         def alertCooldownMillis = 24 * 60 * 60 * 1000
 
         if (elapsed > thresholdMillis) {
             if (!lastAlertDate || now.time - lastAlertDate.time >= alertCooldownMillis) {
-                def msg = "${device.displayName} may have a dead battery - no temperature report in ${(elapsed / 3600000).toInteger()} hours.\nLast Temp: ${status.lastTemp} deg, Last Report: ${formatLogTimestamp(lastReportDate)}, Battery: ${status.batteryLevel}%, Last Battery Replacement: ${formatUnixTimestamp(status.lastBattery)}"
+                def msg = "${device.displayName} may be dead, asleep, out of range, or not reporting - no device event in ${(elapsed / 3600000).toInteger()} hours.\nLast Event: ${formatEventSummary(status)} @ ${formatLogTimestamp(lastAnyEvent)}, Last Temp: ${formatOptionalValue(status.lastTemp, ' deg')}, Battery: ${formatOptionalValue(status.batteryLevel, '%')}, Last Battery Replacement: ${formatUnixTimestamp(status.lastBattery)}"
                 log.warn msg
                 if (sendPush && notifierDevice) {
                     notifierDevice.deviceNotification(msg)
@@ -173,11 +227,18 @@ def checkDevices() {
                 log.debug "${device.displayName} alert suppressed - last notification sent ${hoursSinceAlert} hours ago."
             }
         } else if (enableDebug) {
-            log.debug "${device.displayName} last temperature report was ${formatLogTimestamp(lastReportDate)}"
+            log.debug "${device.displayName} last device event was ${formatLogTimestamp(lastAnyEvent)}"
         }
 
         state.deviceStatus[key] = status
     }
+}
+
+private List monitoredDeviceList() {
+    def devices = settings?.monitoredDevices ?: settings?.temperatureDevices
+    if (!devices) return []
+    if (devices instanceof Collection) return devices.findAll { it != null }
+    return [devices]
 }
 
 private String deviceKey(def device) {
@@ -185,11 +246,39 @@ private String deviceKey(def device) {
 }
 
 private currentBatteryValue(def device) {
-    return device?.hasAttribute("battery") ? device.currentValue("battery") : "N/A"
+    return hasAttribute(device, "battery") ? device.currentValue("battery") : "N/A"
+}
+
+private currentTemperatureValue(def device) {
+    return hasAttribute(device, "temperature") ? device.currentValue("temperature") : null
 }
 
 private currentLastBatteryValue(def device) {
-    return device?.hasAttribute("lastBattery") ? device.currentValue("lastBattery") : null
+    return hasAttribute(device, "lastBattery") ? device.currentValue("lastBattery") : null
+}
+
+private boolean hasAttribute(def device, String attributeName) {
+    return device?.hasAttribute(attributeName) == true
+}
+
+private Map mostRecentCurrentState(def device) {
+    Date latest = null
+    Map latestState = null
+    MONITORED_ATTRIBUTES.each { attributeName ->
+        if (hasAttribute(device, attributeName)) {
+            def currentState = device.currentState(attributeName)
+            Date date = asDate(currentState?.date, null)
+            if (date && (!latest || date.time > latest.time)) {
+                latest = date
+                latestState = [
+                    name: attributeName,
+                    value: currentState?.value,
+                    date: date
+                ]
+            }
+        }
+    }
+    return latestState
 }
 
 private Date latestDate(List values, Date fallback) {
@@ -233,6 +322,22 @@ private String formatUnixTimestamp(def value) {
     }
 
     return formatLogTimestamp(new Date(unixTime))
+}
+
+private String formatEventSummary(def status) {
+    def name = status.lastEventName ?: "unknown"
+    def value = status.lastEventValue
+    if (value == null || value.toString() == "") return name
+    return "${name}: ${value}"
+}
+
+private String formatOptionalValue(def value, String suffix = "") {
+    if (value == null || value == "N/A" || value.toString() == "") return "N/A"
+    return "${value}${suffix}"
+}
+
+private valueOrDefault(def value, def fallback) {
+    return value == null ? fallback : value
 }
 
 private Long asLong(def value) {

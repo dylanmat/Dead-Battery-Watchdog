@@ -1,8 +1,8 @@
 # Dead Battery Watchdog Roadmap
 
-Dead Battery Watchdog v1 is a temperature-report watchdog: it monitors selected temperature-capable devices and alerts when a device stops reporting temperature events. That remains the current released behavior.
+Dead Battery Watchdog v2.0 is an event-liveness watchdog: it monitors selected devices and alerts when a device stops reporting supported Hubitat events. Earlier v1 releases used temperature reports as the liveness signal.
 
-The v2 roadmap evolves the project into broader Zigbee battery-device health monitoring. The main design shift is that a device should be considered likely dead only when useful event streams go silent, not merely because one attribute stops updating.
+The v2 roadmap continues evolving the project into broader Zigbee battery-device health monitoring. The main design shift is that a device should be considered likely dead only when useful event streams go silent, not merely because one attribute stops updating.
 
 ## Why v2 Changes Direction
 
@@ -31,7 +31,7 @@ The v2 model separates device liveness from individual attribute freshness:
 
 ### v2.0 - Track Any-Event Liveness
 
-Track `lastAnyEvent` per device and use it as the primary liveness signal for dead-device detection. Any parsed Hubitat event from a monitored device can count as evidence of life, including contact, motion, temperature, humidity, button, water, acceleration, battery, and other device events.
+Implemented baseline: track `lastAnyEvent` per device and use it as the primary liveness signal for dead-device detection. Any parsed Hubitat event from a monitored device can count as evidence of life, including contact, motion, temperature, humidity, button, water, acceleration, battery, and other device events.
 
 Battery percentage should not be used as proof that a device is alive. It may be stale hub state.
 
@@ -122,7 +122,7 @@ Manual-test workflows should track:
 
 Document how users should move from v1 temperature monitoring to v2 event-health monitoring. The guidance should explain:
 
-- Existing v1 behavior remains temperature-based until v2 implementation changes are released.
+- Existing v1 behavior was temperature-based; v2.0 and later use event-liveness monitoring.
 - v2 profiles should be chosen by device purpose, not just by available attributes.
 - Temperature-only alerts become stale-temperature alerts unless all useful event streams are silent.
 - Battery percentage and battery reports are supporting evidence, not the primary dead-device detector.
