@@ -29,7 +29,7 @@ The v2 model separates device liveness from individual attribute freshness:
 
 ## Version Stages
 
-### v2.0 - Track Any-Event Liveness
+### v2.0 - Track Any-Event Liveness - Complete 2026-06-29
 
 Implemented baseline: track `lastAnyEvent` per device and use it as the primary liveness signal for dead-device detection. Any parsed Hubitat event from a monitored device can count as evidence of life, including contact, motion, temperature, humidity, button, water, acceleration, battery, and other device events.
 
