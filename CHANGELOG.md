@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.0.2 (2026-06-29)
+- Narrow device selection to hardware devices that expose Hubitat's `battery` capability.
+- Require monitored devices to pass both hardware-device filtering and battery-capability filtering at runtime.
+- Preserve migration fallback for older selected temperature devices, but skip migrated devices that do not expose `battery`.
+
 ## v2.0.1 (2026-06-29)
 - Limit monitored devices to real hardware devices.
 - Skip virtual devices and custom devices during subscription, event handling, and scheduled checks.

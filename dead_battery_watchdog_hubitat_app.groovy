@@ -1,7 +1,7 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "2.0.1"
+@Field final String APP_VERSION = "2.0.2"
 @Field final String APP_BRANCH  = "main"          // "main"
 @Field final String APP_UPDATED = "2026-06-29"    // ISO date is clean
 @Field final List<String> MONITORED_ATTRIBUTES = [
@@ -44,7 +44,7 @@ definition(
 
 preferences {
     section("Select devices to monitor") {
-        input "monitoredDevices", "capability.*", title: "Monitored Hardware Devices", multiple: true, required: false
+        input "monitoredDevices", "capability.battery", title: "Monitored Battery Hardware Devices", multiple: true, required: false
     }
     section("Configuration") {
         input "inactiveThreshold", "number", title: "Alert if no device event for (hours)", defaultValue: 24
@@ -93,10 +93,14 @@ def initialize() {
 
     def selectedDevices = selectedDeviceList()
     def devices = monitoredDeviceList()
-    def skippedDevices = selectedDevices.findAll { !isRealHardwareDevice(it) }
+    def skippedNonHardwareDevices = selectedDevices.findAll { !isRealHardwareDevice(it) }
+    def skippedNonBatteryDevices = selectedDevices.findAll { isRealHardwareDevice(it) && !hasAttribute(it, "battery") }
 
-    if (skippedDevices && enableDebug) {
-        log.debug "Skipping non-hardware monitored devices: ${skippedDevices.collect { it.displayName }.join(', ')}"
+    if (skippedNonHardwareDevices && enableDebug) {
+        log.debug "Skipping non-hardware monitored devices: ${skippedNonHardwareDevices.collect { it.displayName }.join(', ')}"
+    }
+    if (skippedNonBatteryDevices && enableDebug) {
+        log.debug "Skipping hardware devices without battery capability: ${skippedNonBatteryDevices.collect { it.displayName }.join(', ')}"
     }
 
     devices.each { device ->
@@ -148,6 +152,11 @@ def deviceEventHandler(evt) {
         return
     }
 
+    if (device && !hasAttribute(device, "battery")) {
+        if (enableDebug) log.debug "Ignoring event from hardware device without battery capability ${device.displayName}."
+        return
+    }
+
     def now = asDate(evt.date, new Date())
     def batteryLevel = device ? currentBatteryValue(device) : "N/A"
     def lastBattery = device ? currentLastBatteryValue(device) : null
@@ -191,7 +200,7 @@ def checkDevices() {
 
     def devices = monitoredDeviceList()
     if (!devices) {
-        log.warn selectedDeviceList() ? "No supported hardware monitored devices selected." : "No monitored devices selected."
+        log.warn selectedDeviceList() ? "No supported battery hardware monitored devices selected." : "No monitored devices selected."
         return
     }
 
@@ -247,7 +256,7 @@ def checkDevices() {
 }
 
 private List monitoredDeviceList() {
-    return selectedDeviceList().findAll { isRealHardwareDevice(it) }
+    return selectedDeviceList().findAll { isRealHardwareDevice(it) && hasAttribute(it, "battery") }
 }
 
 private List selectedDeviceList() {
