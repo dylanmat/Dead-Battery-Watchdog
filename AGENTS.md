@@ -8,6 +8,7 @@ Dead Battery Watchdog is a single-file Hubitat Groovy app plus README documentat
 
 - `dead_battery_watchdog_hubitat_app.groovy`: Hubitat app source. This is the release artifact users paste into Hubitat Apps Code.
 - `README.md`: Installation, usage, configuration, and changelog.
+- `ROADMAP.md`: Planned v2 roadmap for event-based Zigbee battery-device health monitoring.
 
 ## Current Behavior
 
@@ -44,6 +45,19 @@ Older versions stored battery percentage in `lastBattery`. Do not use persisted 
 - Avoid external dependencies.
 - Preserve existing state migrations where possible, especially `lastChange` to `lastReport`.
 - Use defensive helpers for device attributes because not every selected temperature device exposes `battery` or `lastBattery`.
+
+## Planned v2 Direction
+
+v1.3.0 is the current released behavior and remains temperature-report based. The v2 roadmap shifts the project toward broader Zigbee device health monitoring:
+
+- Track `lastAnyEvent` as the main liveness signal instead of relying only on temperature reports.
+- Track primary-function events separately from secondary attributes.
+- Classify devices as dead or offline only when useful event streams go silent.
+- Classify temperature, battery, or other attributes as stale when the device is still active through other events.
+- Add per-device health classes, configurable thresholds, clearer alert severity, confidence levels, and manual-test workflows.
+- Keep battery percentage as supporting evidence only; do not treat it as proof that a sleepy Zigbee device is alive.
+
+When implementing v2 stages, follow `ROADMAP.md` as the canonical planning document and avoid wording that implies planned behavior already exists in the released app.
 
 ## Release Documentation
 

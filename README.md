@@ -28,6 +28,12 @@ Dead Battery Watchdog is a Hubitat app that monitors temperature-capable devices
 | **Send push notification for dead battery alerts** | Enable or disable push notifications. |
 | **Notification Device** | Optional Hubitat notification device used to deliver alerts. |
 
+## Roadmap
+
+The current v1 app uses temperature reports as the signal for likely dead battery devices. The planned v2 direction broadens this into event-based Zigbee device health monitoring, where the app tracks any event as proof of life, tracks primary device functions separately, and reports stale attributes without calling the whole device dead.
+
+See [ROADMAP.md](ROADMAP.md) for the staged v2.0 through v2.7 plan.
+
 ## Changelog
 
 ### v1.3.0 (2026-06-28)
