@@ -1,6 +1,6 @@
 # Dead Battery Watchdog Roadmap
 
-Dead Battery Watchdog v2.0 is an event-liveness watchdog: it monitors selected devices and alerts when a device stops reporting supported Hubitat events. Earlier v1 releases used temperature reports as the liveness signal.
+Dead Battery Watchdog v2.0.1 is an event-liveness watchdog: it monitors selected real hardware devices and alerts when a device stops reporting supported Hubitat events. Earlier v1 releases used temperature reports as the liveness signal.
 
 The v2 roadmap continues evolving the project into broader Zigbee battery-device health monitoring. The main design shift is that a device should be considered likely dead only when useful event streams go silent, not merely because one attribute stops updating.
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.0.1 (2026-06-29)
+- Limit monitored devices to real hardware devices.
+- Skip virtual devices and custom devices during subscription, event handling, and scheduled checks.
+- Update device-selection wording to clarify that v2.0 monitoring is hardware-device focused.
+
 ## v2.0.0 (2026-06-29)
 - Track `lastAnyEvent` for each monitored device and use it as the liveness signal for alerts.
 - Broaden monitoring from temperature-only devices to selected monitored devices with supported Hubitat event attributes.

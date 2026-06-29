@@ -1,7 +1,7 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "2.0.0"
+@Field final String APP_VERSION = "2.0.1"
 @Field final String APP_BRANCH  = "main"          // "main"
 @Field final String APP_UPDATED = "2026-06-29"    // ISO date is clean
 @Field final List<String> MONITORED_ATTRIBUTES = [
@@ -31,7 +31,7 @@ definition(
     name: APP_NAME,
     namespace: "dylanm.dbw.${APP_BRANCH}",
     author: "Dylan M",
-    description: "Alert if a monitored device has stopped reporting events.",
+    description: "Alert if a monitored hardware device has stopped reporting events.",
     category: "Convenience",
     version: "${APP_VERSION}",
     importUrl: "https://raw.githubusercontent.com/dylanmat/Dead-Battery-Watchdog/refs/heads/${APP_BRANCH}/dead_battery_watchdog_hubitat_app.groovy",
@@ -44,7 +44,7 @@ definition(
 
 preferences {
     section("Select devices to monitor") {
-        input "monitoredDevices", "capability.*", title: "Monitored Devices", multiple: true, required: false
+        input "monitoredDevices", "capability.*", title: "Monitored Hardware Devices", multiple: true, required: false
     }
     section("Configuration") {
         input "inactiveThreshold", "number", title: "Alert if no device event for (hours)", defaultValue: 24
@@ -91,7 +91,14 @@ def initialize() {
         state.deviceStatus = [:]
     }
 
+    def selectedDevices = selectedDeviceList()
     def devices = monitoredDeviceList()
+    def skippedDevices = selectedDevices.findAll { !isRealHardwareDevice(it) }
+
+    if (skippedDevices && enableDebug) {
+        log.debug "Skipping non-hardware monitored devices: ${skippedDevices.collect { it.displayName }.join(', ')}"
+    }
+
     devices.each { device ->
         MONITORED_ATTRIBUTES.each { attributeName ->
             if (hasAttribute(device, attributeName)) {
@@ -133,6 +140,11 @@ def deviceEventHandler(evt) {
 
     if (!key) {
         log.warn "Received device event without a device id; event ignored."
+        return
+    }
+
+    if (device && !isRealHardwareDevice(device)) {
+        if (enableDebug) log.debug "Ignoring event from non-hardware device ${device.displayName}."
         return
     }
 
@@ -179,7 +191,7 @@ def checkDevices() {
 
     def devices = monitoredDeviceList()
     if (!devices) {
-        log.warn "No monitored devices selected."
+        log.warn selectedDeviceList() ? "No supported hardware monitored devices selected." : "No monitored devices selected."
         return
     }
 
@@ -235,6 +247,10 @@ def checkDevices() {
 }
 
 private List monitoredDeviceList() {
+    return selectedDeviceList().findAll { isRealHardwareDevice(it) }
+}
+
+private List selectedDeviceList() {
     def devices = settings?.monitoredDevices ?: settings?.temperatureDevices
     if (!devices) return []
     if (devices instanceof Collection) return devices.findAll { it != null }
@@ -259,6 +275,49 @@ private currentLastBatteryValue(def device) {
 
 private boolean hasAttribute(def device, String attributeName) {
     return device?.hasAttribute(attributeName) == true
+}
+
+private boolean isRealHardwareDevice(def device) {
+    return device && !isVirtualDevice(device) && !isCustomDevice(device)
+}
+
+private boolean isVirtualDevice(def device) {
+    String typeName = safeDeviceValue(device, "typeName")?.toString()?.toLowerCase()
+    String deviceNetworkId = safeDeviceValue(device, "deviceNetworkId")?.toString()?.toLowerCase()
+
+    return typeName?.contains("virtual") || deviceNetworkId?.startsWith("virtual")
+}
+
+private boolean isCustomDevice(def device) {
+    String typeName = safeDeviceValue(device, "typeName")?.toString()?.toLowerCase()
+    String namespace = safeDeviceValue(device, "namespace")?.toString()?.toLowerCase()
+
+    if (typeName?.contains("custom")) return true
+    if (!namespace) return false
+    return !namespace.startsWith("hubitat")
+}
+
+private safeDeviceValue(def device, String propertyName) {
+    if (!device) return null
+
+    try {
+        def value = device."${propertyName}"
+        if (value != null) return value
+    } catch (ignored) {
+    }
+
+    try {
+        String methodName = "get${propertyName[0].toUpperCase()}${propertyName.substring(1)}"
+        def value = device."${methodName}"()
+        if (value != null) return value
+    } catch (ignored) {
+    }
+
+    try {
+        return device.getDataValue(propertyName)
+    } catch (ignored) {
+        return null
+    }
 }
 
 private Map mostRecentCurrentState(def device) {

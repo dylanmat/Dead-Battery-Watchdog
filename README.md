@@ -1,6 +1,6 @@
 # Dead Battery Watchdog
 
-Dead Battery Watchdog is a Hubitat app that monitors selected devices to catch sensors that have likely stopped reporting. When a monitored device stops sending supported Hubitat events, the app sends a notification so you can investigate the battery, range, sleep state, or Zigbee routing before the device is needed.
+Dead Battery Watchdog is a Hubitat app that monitors selected hardware devices to catch sensors that have likely stopped reporting. When a monitored hardware device stops sending supported Hubitat events, the app sends a notification so you can investigate the battery, range, sleep state, or Zigbee routing before the device is needed.
 
 ## Installation
 
@@ -11,7 +11,7 @@ Dead Battery Watchdog is a Hubitat app that monitors selected devices to catch s
 
 ## Basic Usage
 
-1. **Select devices:** Choose one or more devices to watch. The app listens for common device events including temperature, humidity, contact, motion, acceleration, water, battery, button, switch, lock, presence, and activity events.
+1. **Select devices:** Choose one or more real hardware devices to watch. Virtual devices and custom devices are skipped. The app listens for common device events including temperature, humidity, contact, motion, acceleration, water, battery, button, switch, lock, presence, and activity events.
 2. **Pick the inactivity window:** Set how many hours a device can go without any monitored event before the app alerts. The default is 24 hours.
 3. **Decide how often to check:** Pick an interval (15, 30, or 60 minutes) for the periodic health check.
 4. **Configure notifications:** Enable push notifications and optionally pick a Hubitat Notification device. Alerts are limited to once per device every 24 hours, avoiding overnight notification floods.
@@ -21,7 +21,7 @@ Dead Battery Watchdog is a Hubitat app that monitors selected devices to catch s
 
 | Setting | Description |
 | --- | --- |
-| **Monitored Devices** | The devices whose supported Hubitat events will be monitored. |
+| **Monitored Hardware Devices** | The real hardware devices whose supported Hubitat events will be monitored. Virtual and custom devices are skipped. |
 | **Alert if no device event for (hours)** | The inactivity threshold that triggers a notification. |
 | **Check interval** | How frequently the app evaluates device activity (15, 30, or 60 minutes). |
 | **Enable debug logging** | Turn on detailed logs while troubleshooting. |
@@ -30,7 +30,7 @@ Dead Battery Watchdog is a Hubitat app that monitors selected devices to catch s
 
 ## Roadmap
 
-The current v2.0 app uses common Hubitat device events as the signal for likely dead, asleep, out-of-range, or non-reporting devices. Future v2 stages will track primary device functions separately and report stale attributes without calling the whole device dead.
+The current v2.0.1 app uses common Hubitat device events from real hardware devices as the signal for likely dead, asleep, out-of-range, or non-reporting devices. Future v2 stages will track primary device functions separately and report stale attributes without calling the whole device dead.
 
 See [ROADMAP.md](ROADMAP.md) for the staged v2.0 through v2.8 plan.
 

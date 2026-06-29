@@ -2,7 +2,7 @@
 
 ## Project
 
-Dead Battery Watchdog is a single-file Hubitat Groovy app plus documentation. It monitors selected devices and alerts when a device stops reporting supported Hubitat events for a configurable number of hours.
+Dead Battery Watchdog is a single-file Hubitat Groovy app plus documentation. It monitors selected real hardware devices and alerts when a device stops reporting supported Hubitat events for a configurable number of hours.
 
 ## Important Files
 
@@ -13,8 +13,9 @@ Dead Battery Watchdog is a single-file Hubitat Groovy app plus documentation. It
 
 ## Current Behavior
 
-- App version is `2.0.0`.
-- The app subscribes to supported event attributes for selected monitored devices and records the most recent parsed event timestamp in `lastAnyEvent`.
+- App version is `2.0.1`.
+- The app subscribes to supported event attributes for selected real hardware devices and records the most recent parsed event timestamp in `lastAnyEvent`.
+- Virtual devices and custom devices are skipped during subscription, event handling, and scheduled checks.
 - `checkDevices()` runs on a scheduled interval of 15, 30, or 60 minutes.
 - A device alerts when elapsed time since the last supported device event exceeds `inactiveThreshold`.
 - Repeat alerts are throttled per device to once every 24 hours using `status.lastAlert`.
@@ -49,11 +50,11 @@ Older versions stored battery percentage in `lastBattery`. Do not use persisted 
 - Keep the app self-contained in Groovy. Hubitat users paste this file directly into Apps Code.
 - Avoid external dependencies.
 - Preserve existing state migrations where possible, especially `lastChange` to `lastReport` and v1 `lastReport` to v2 `lastAnyEvent`.
-- Use defensive helpers for device attributes because not every selected monitored device exposes `temperature`, `battery`, or `lastBattery`.
+- Use defensive helpers for device attributes because not every selected monitored hardware device exposes `temperature`, `battery`, or `lastBattery`.
 
 ## Planned v2 Direction
 
-v2.0 is the current released behavior and uses supported Hubitat events as the liveness signal. Future v2 roadmap stages continue shifting the project toward broader Zigbee device health monitoring:
+v2.0.1 is the current released behavior and uses supported Hubitat events from real hardware devices as the liveness signal. Future v2 roadmap stages continue shifting the project toward broader Zigbee device health monitoring:
 
 - Track primary-function events separately from secondary attributes.
 - Classify devices as dead or offline only when useful event streams go silent.
