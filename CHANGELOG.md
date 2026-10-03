@@ -1,48 +1,29 @@
 # Changelog
 
-## v2.0.2 (2026-06-29)
-- Narrow device selection to hardware devices that expose Hubitat's `battery` capability.
-- Require monitored devices to pass both hardware-device filtering and battery-capability filtering at runtime.
-- Preserve migration fallback for older selected temperature devices, but skip migrated devices that do not expose `battery`.
+## Template guidance
 
-## v2.0.1 (2026-06-29)
-- Limit monitored devices to real hardware devices.
-- Skip virtual devices and custom devices during subscription, event handling, and scheduled checks.
-- Update device-selection wording to clarify that v2.0 monitoring is hardware-device focused.
+Record notable reviewed changes under Unreleased. Create a versioned entry only when an actual release is prepared, using its real version and date. Adopting projects preserve their own release history.
 
-## v2.0.0 (2026-06-29)
-- Track `lastAnyEvent` for each monitored device and use it as the liveness signal for alerts.
-- Broaden monitoring from temperature-only devices to selected monitored devices with supported Hubitat event attributes.
-- Include last event name, value, and timestamp in alerts while keeping temperature, battery level, and last battery replacement as optional context.
-- Preserve existing v1 temperature state by migrating `lastReport` and `lastChange` into the new event-based state when needed.
-- Keep battery percentage as supporting context only; polling the current battery value does not prove the device is alive.
+Use the release-version format defined in [STANDARDS.md](STANDARDS.md). A released entry uses a heading such as `## [v0.0.0] - YYYY-MM-DD`, with the actual release version and date substituted. This example is not a release record.
 
-## v1.3.0 (2026-06-28)
-- Treat `lastBattery` as the Unix timestamp for the last battery replacement.
-- Include the last battery replacement date in dead battery alerts using the app's local Hubitat timestamp format.
-- Store battery percentage separately from `lastBattery` so older state does not confuse battery level with replacement time.
+## [Unreleased]
 
-## v1.2.4 (2026-06-14)
-- Track the timestamp of the latest temperature report, even when the reported value is unchanged.
-- Alert only when a device stops reporting temperature events, preventing false alarms from stable rounded temperatures.
-- Preserve existing device state on update and migrate older `lastChange` timestamps to `lastReport`.
+### Changed
 
-## v1.2.3 (2026-02-13)
-- Format initial-state debug timestamps in the same Hubitat-style local format used by unchanged-temperature and alert logs.
-- Align `checkDevices()` run-time debug logging with the same local timestamp format for consistency.
+- Standardized release labels and Git tags on `vMAJOR.MINOR.PATCH` formatting, such as `v0.0.0`.
+- Reframed the framework as documentation-only and language-neutral, with an adoption checklist and central document ownership table.
+- Distinguished template guidance, unresolved project fields, baseline rules, and adopted policy approval.
+- Defined scoped authorization, sequential agent responsibilities, recorded handoffs, and blocking/nonblocking review outcomes.
+- Moved documentation updates into the reviewed change and separated readiness from authorization to release.
+- Expanded architecture, AI security, evaluation evidence, and operational completion criteria.
+- Added decision ownership and approval evidence; replaced relative roadmap windows with explicit dates or Unscheduled.
 
-## v1.2.2 (2026-02-13)
-- Format "Last Change" timestamps in logs and alerts using Hubitat-style local time (`yyyy-MM-dd hh:mm:ss.SSS a`) to avoid UTC/local confusion.
-- Added safe timestamp parsing helper methods for persisted state values.
+### Added
 
-## v1.2.1 (2025-11-01)
-- Limit repeat notifications to once every 24 hours per device to prevent alert fatigue.
-- Updated documentation with usage guidance and a historical changelog.
+- Local environment-file ignore rules, retaining a placeholder-only example-file exception.
+- ADR-001 documenting the approved framework direction.
 
-## v1.2.0 (2025-10-25)
-- Added configurable check intervals and inactivity thresholds.
-- Included optional notification device support alongside push notifications.
-- Persist the last temperature, change timestamp, and battery level for each device.
+### Removed
 
-## Earlier releases
-- Initial release established temperature-based monitoring and push notifications. Historical details prior to v1.2.0 were undocumented.
+- Executable starter dependencies, setup/test scripts, assertion-only smoke test, and placeholder code directories.
+- Language and UI toolkit requirements, starter-specific automation milestones, and the fictitious dated release entry.
