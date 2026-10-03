@@ -1,46 +1,59 @@
 # Project Standards
 
-## Template guidance
+## Implementation Conventions
 
-Select conventions and verification methods appropriate to the project. This framework requires evidence, not a particular language, UI toolkit, test runner, or directory layout. Record adopted standards and approval in [CONTEXT.md](CONTEXT.md).
+- Keep the runtime in `dead_battery_watchdog_hubitat_app.groovy` as a single self-contained Groovy app compatible with Hubitat Apps Code.
+- Do not introduce external dependencies, build-time assembly, or a separate service without an accepted project decision and updated installation guidance.
+- Preserve Hubitat lifecycle behavior, settings compatibility, and persisted state migrations unless the approved change explicitly replaces them.
+- Use defensive helpers for driver properties and optional attributes. Do not assume every battery-capable device exposes temperature or `lastBattery`.
+- Key `state.deviceStatus` by device ID string and keep state-field meaning consistent across initialization, event handling, and scheduled checks.
+- Use `formatLogTimestamp(Date)` for user-facing and debug dates and `formatUnixTimestamp(value)` for validated battery-replacement timestamps.
+- Use `battery` or `batteryLevel` for percentage and `lastBattery` only for replacement time.
+- Keep comments and logs concise and avoid claims that a cached battery value proves device liveness.
 
-## Baseline rules
+## Documentation Conventions
 
-### Changes and documentation
+- `README.md` describes installation and released user-facing behavior; `CHANGELOG.md` contains release history; `ROADMAP.md` contains planned behavior.
+- Do not describe an unfinished roadmap stage as released functionality.
+- Update `CONTEXT.md`, `ARCHITECTURE.md`, `SECURITY.md`, `STANDARDS.md`, `DECISIONS.md`, and `AGENTS.md` when their authoritative subject changes.
+- Record significant durable tradeoffs in `DECISIONS.md`; do not create a decision record for routine edits.
+- Keep relative links valid and terminology, versions, dates, defaults, state fields, and configuration names consistent with the source.
 
-- Keep changes within approved scope and make interfaces and failure behavior understandable.
-- Update affected documents in the same reviewed change, using the ownership and update triggers in [README.md](README.md).
-- Record major design or policy tradeoffs in [DECISIONS.md](DECISIONS.md).
-- Keep guidance, unresolved project fields, proposals, and approved policy distinguishable. Do not invent approvals, test results, release dates, or milestone completion.
-- Version prompts and relevant configuration so verification evidence can identify what was evaluated.
+## Verification
 
-### Verification and evaluation evidence
+There is no repository-hosted automated Hubitat runtime test suite. Verification must be proportionate to the change and must distinguish static evidence from behavior observed on a Hubitat hub.
 
-- Define intended behavior and acceptance criteria before implementing a behavior change.
-- Cover representative successful inputs and relevant failure cases, including invalid outputs and unavailable dependencies.
-- For AI behavior changes, include cases for applicable untrusted-content, permission, and sensitive-data boundaries. Compare against the previous behavior when it exists.
-- Prefer reproducible checks; when outputs vary, record the evaluation method, repetitions, and acceptance thresholds rather than claiming certainty from one sample.
-- Record the changed revision, prompt/model/configuration identifiers where applicable, cases, method or commands, expected outcome, actual results, and limitations.
-- Protect evaluation fixtures and reports according to [SECURITY.md](SECURITY.md). Offline checks are preferred when external calls are unnecessary.
-- Documentation-only changes require link, consistency, completion-state, and diff review. They do not require artificial application tests.
+For every change:
 
-### Review and release gates
+- Inspect the complete diff and confirm it matches the approved scope.
+- Search for inconsistent version numbers, dates, setting names, state-field meanings, and released-versus-planned claims.
+- Check relative Markdown links and documentation references.
+- Confirm the Groovy release artifact remains self-contained and contains no secret or unintended private value.
 
-- Use `vMAJOR.MINOR.PATCH` for release labels and Git tags, for example `v0.0.0` or `v0.1.0`. This format does not assign the current project a version.
-- A reviewed change includes scope, rationale, affected documentation, verification evidence, and unresolved risks.
-- A **blocking** finding is an unmet acceptance criterion, relevant policy violation, defect preventing intended behavior, or missing evidence needed to establish readiness. Resolve it and recheck the affected behavior before approval or release.
-- A **nonblocking** finding is an improvement that does not prevent readiness. Record its rationale and, if deferred, its owner and follow-up location.
-- Review outcomes are changes requested or ready within the documented scope. A ready result is not authorization to publish or deploy.
-- Before release, confirm required checks passed, documentation is current, and no blocking findings remain. Finalize release notes and obtain authorization for the intended release action.
+For app behavior changes, manually exercise relevant scenarios on Hubitat where practical:
 
-## Project fields
+- Fresh installation and update/resubscription behavior.
+- Real hardware filtering and rejection of virtual, custom, or non-battery devices.
+- Supported event handling and updates to `lastAnyEvent` and temperature-specific state.
+- Scheduled checks at supported intervals, threshold comparison, and 24-hour alert cooldown.
+- Notifications enabled with and without a selected notification device.
+- Missing optional attributes, malformed persisted values, timezone formatting, and migration from older state.
 
-- Implementation conventions: [REQUIRED: chosen languages, formatting, interface conventions, and repository layout, or justified exclusions]
-- Verification methods: [REQUIRED: applicable tools/commands or manual procedures and when each runs]
-- Acceptance criteria: [REQUIRED: project quality thresholds and evaluation expectations for its actual use cases]
-- Review ownership: [REQUIRED: accountable reviewers and whether any changes require independent review]
-- Operations and rollout: [REQUIRED: logging, monitoring, rollout checks, rollback procedure, and accountable operators, or justified exclusions]
+Record the tested source revision, setup, scenarios, expected and observed results, limitations, and any relevant Hubitat logs with private data removed. If Hubitat testing is unavailable, state that limitation rather than claiming runtime validation.
 
-## Completion criteria
+## Review Gates
 
-A contributor can determine the checks required for a proposed change, produce traceable evidence, classify review findings, and establish readiness without assuming publication permission.
+A change is ready only when its acceptance criteria are met, applicable checks pass, affected documentation is current, and no blocking finding remains.
+
+- A **blocking finding** is a behavior defect, compatibility break, security-policy violation, unmet acceptance criterion, released/planned mismatch, or missing evidence required for the approved change.
+- A **nonblocking finding** is an improvement that does not prevent the approved behavior or documentation from being correct. Record the rationale and follow-up owner if it is deferred.
+- Documentation-only changes require link, consistency, source-alignment, and diff review; they do not require artificial runtime tests.
+- Review readiness does not authorize publication or deployment.
+
+## Releases and Rollback
+
+- Use `vMAJOR.MINOR.PATCH` for release labels and Git tags.
+- When app behavior changes, update `APP_VERSION`, `APP_UPDATED`, and `CHANGELOG.md` together.
+- Mark a roadmap stage complete only after its acceptance evidence exists, using `Complete YYYY-MM-DD` in the stage heading.
+- Before release, verify the exact Groovy file users will paste, confirm documentation matches it, and obtain publication authorization.
+- Roll back by reinstalling a reviewed earlier source version. Before rollback, assess whether newer persisted state remains compatible with that version.

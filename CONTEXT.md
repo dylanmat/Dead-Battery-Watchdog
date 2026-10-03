@@ -1,22 +1,51 @@
 # Project Context
 
-## Template guidance
+## Purpose and Users
 
-Capture facts that help contributors make decisions. Use the completion conventions and document ownership table in [README.md](README.md). Keep design details in architecture and permissions in security.
+Dead Battery Watchdog helps Hubitat users identify battery-powered hardware devices that may have stopped reporting before the device is needed. It is intended for people who operate a Hubitat hub and want passive monitoring of selected Zigbee or other battery-capable devices.
 
-## Project fields
+The project maintainer is accountable for product direction, technical design, security, quality, workflow, and releases. The installed app is operated by each Hubitat user in that user's own hub environment.
 
-- Purpose and expected outcome: [REQUIRED: problem, intended capability, and outcome]
-- Primary users and stakeholders: [REQUIRED: audience, affected teams, and dependencies]
-- Accountable owners: [REQUIRED: people or teams assigned to each responsibility in the README ownership table; one owner may hold several responsibilities]
-- Runtime and operational context: [REQUIRED: actual environments and external services, or justified exclusions]
-- Constraints and assumptions: [REQUIRED: technical, business, contractual, and compliance constraints; distinguish confirmed facts from assumptions]
-- Domain vocabulary: [REQUIRED: terms contributors need to interpret requirements]
-- Current state: [REQUIRED: implemented capabilities, known limitations, and active risks]
-- Success signals: [REQUIRED: observable outcomes, measurement methods, and acceptance targets]
-- Project invariants: [REQUIRED: behavior that changes must preserve; link relevant security policy rather than duplicating it]
-- Policy adoption record: [REQUIRED: policy document/revision, approved scope, approver, and approval date; list unresolved policies separately]
+## Runtime and Repository
 
-## Completion criteria
+- The released product is the single self-contained `dead_battery_watchdog_hubitat_app.groovy` file.
+- Users install the source in Hubitat Apps Code and configure an app instance through Hubitat.
+- Hubitat provides device selection, event subscriptions, scheduling, persistent app state, logging, and optional notification-device delivery.
+- The app has no external library, hosted service, model, retrieval system, queue, database, or separate deployment component.
+- Project documentation, release history, and future work are maintained in this repository.
 
-A contributor can identify the project's goal, users, accountable owners, current limits, and success criteria. Assumptions are distinguishable from facts, and approval records identify the exact policy revisions accepted.
+## Constraints and Assumptions
+
+- Hubitat's Groovy app runtime and device APIs are the supported execution environment.
+- Selected devices must be real hardware devices exposing the Hubitat `battery` capability. Runtime filtering remains necessary because migrated settings or unusual drivers may not meet those conditions.
+- Sleepy devices cannot be proven alive by polling a cached battery value. Parsed supported events are the current liveness evidence.
+- Drivers differ in their attributes and metadata, so access to optional values such as `temperature` and `lastBattery` must remain defensive.
+- Hubitat current state may be historical hub state rather than evidence that a device answered a live request.
+- The repository has no automated Hubitat integration-test environment; runtime behavior requires proportionate manual validation on a Hubitat hub.
+
+## Domain Vocabulary
+
+- **Battery level (`battery`):** the device's reported charge percentage. It is supporting context and may be stale.
+- **Battery replacement (`lastBattery`):** an optional Unix timestamp recording when a battery was replaced. Legacy persisted values must be validated before being treated as timestamps.
+- **Any-event liveness (`lastAnyEvent`):** the latest supported parsed event from a monitored device and the released app's primary liveness signal.
+- **Primary function:** the event stream representing a device's main purpose, planned for a later roadmap stage.
+- **Attribute stale:** a planned classification for an attribute that stopped updating while other useful events show that the device remains active.
+- **Dead threshold:** the allowed period without qualifying activity before the app raises an alert.
+
+## Current State
+
+Version 2.0.2 subscribes to supported attributes on selected battery-capable hardware devices. It records the latest parsed event, checks devices every 15, 30, or 60 minutes, and alerts after the configurable inactivity threshold. Alerts include event, temperature, battery-level, and battery-replacement context where available and are throttled to once per device every 24 hours.
+
+The released app does not yet track primary-function events separately, classify stale attributes, assign health classes or confidence levels, or manage manual-test workflows. Those capabilities remain planned in `ROADMAP.md`.
+
+## Success and Invariants
+
+The app succeeds when it alerts on genuine event silence without treating a stale battery percentage as proof of life, avoids repeated notification floods, preserves existing user state across upgrades, and remains simple to install as one Groovy source file.
+
+Changes must preserve:
+
+- Defensive filtering of virtual, custom, non-hardware, and non-battery devices.
+- Existing state migrations, especially `lastChange` to `lastReport` and v1 `lastReport` to v2 `lastAnyEvent`.
+- Hubitat-location timestamp formatting and validation of `lastBattery` seconds or milliseconds.
+- The distinction between released behavior in the source and future behavior in the roadmap.
+- A self-contained release artifact with no external runtime dependency.

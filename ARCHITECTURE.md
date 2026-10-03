@@ -1,26 +1,51 @@
 # Architecture
 
-## Template guidance
+## System Boundary
 
-Document the system that exists or is explicitly proposed. Label current and proposed designs separately. Do not introduce orchestration, retrieval, memory, queues, or provider abstraction solely to fill this template. Mark unused components not applicable with a reason.
+Dead Battery Watchdog is one Hubitat Groovy app installed and executed on a user's Hubitat hub. The Groovy source contains configuration, lifecycle hooks, device filtering, event handling, scheduling, state migration, alert evaluation, logging, and notification delivery.
 
-Use [SECURITY.md](SECURITY.md) for permission policy, [STANDARDS.md](STANDARDS.md) for verification gates, and [DECISIONS.md](DECISIONS.md) for major tradeoffs.
+There is no separate server, client, database, model, retrieval layer, background worker, credential store, or third-party runtime dependency.
 
-## Project fields
+## Components
 
-- Design status and principles: [REQUIRED: current/proposed scope, design constraints, and tradeoffs]
-- Components and responsibilities: [REQUIRED: actual components, interfaces, accountable operators, and boundaries]
-- End-to-end data flow: [REQUIRED: input sources, processing, model/tool calls, validation, outputs, and storage]
-- Trust boundaries: [REQUIRED: where untrusted content enters, where data leaves the system, and where permissions are enforced]
-- External integrations: [REQUIRED: APIs, providers, storage, authentication mechanism references, and dependency ownership; never include credentials]
-- Model integration, if used: [REQUIRED: model/provider choices linked to security approval, configuration, timeouts, retry limits, rate-limit handling, and any fallback]
-- Prompt and context handling, if used: [REQUIRED: prompt version identification, context sources, context limits, and handling of untrusted content]
-- Retrieval or memory, if used: [REQUIRED: indexing, access filtering, provenance, persistence, and deletion behavior]
-- Output and action boundaries: [REQUIRED: validation steps and approval enforcement before consequential actions]
-- Failure handling: [REQUIRED: unavailable dependencies, invalid outputs, partial tool failures, retry safety, and how users learn of failures]
-- Operations: [REQUIRED: deployment boundaries, observability without sensitive content, incident ownership, and recovery/rollback references]
-- Verification mapping: [REQUIRED: critical design assumptions and corresponding tests, evaluations, or manual checks]
+- **Preferences:** select battery-capable devices, inactivity threshold, 15/30/60-minute check interval, debug logging, push-notification enablement, and an optional notification device.
+- **Lifecycle:** `installed()` and `updated()` call `initialize()`; updates first remove existing schedules and subscriptions.
+- **Device filtering:** `monitoredDeviceList()` permits selected real hardware devices that expose `battery`. Virtual devices, custom drivers, and devices lacking that attribute are skipped.
+- **Subscriptions:** `initialize()` subscribes to each attribute in `MONITORED_ATTRIBUTES` that a monitored device exposes.
+- **Event processing:** `deviceEventHandler(evt)` validates the source device and records the parsed event as the latest evidence of life. Temperature events also update temperature-specific state.
+- **Scheduled evaluation:** `checkDevices()` runs from a Hubitat cron schedule and compares `lastAnyEvent` with the configured inactivity threshold.
+- **Notification:** an overdue device produces a Hubitat warning log and, when enabled and configured, a `deviceNotification` call. `lastAlert` enforces a 24-hour per-device cooldown.
+- **Persistence:** Hubitat `state.deviceStatus` stores one status map per device ID string.
 
-## Completion criteria
+## Data Flow
 
-A reviewer can trace a representative request through the system, identify data exposure and action boundaries, and explain the expected behavior when a dependency fails. Proposed changes have decision records where meaningful tradeoffs exist.
+1. The user selects devices and settings through Hubitat.
+2. Initialization filters the selection and subscribes to supported attributes exposed by each eligible device.
+3. Hubitat delivers device events to `deviceEventHandler`, which stores the latest event timestamp, name, value, display name, optional temperature, battery level, and validated replacement-time source value.
+4. The scheduled check reconciles persisted state with available current Hubitat state, preserving migration fallbacks where required.
+5. If event silence exceeds the threshold and the cooldown allows it, the app formats an alert and writes it to the Hubitat log; it optionally sends the same content through the selected notification device.
+
+Polling `currentValue` or `currentState` reads Hubitat's saved state and is not treated as proof that a sleepy device is currently reachable. Parsed subscribed events update `lastAnyEvent` and are the primary liveness evidence in v2.0.2.
+
+## State and Compatibility
+
+`state.deviceStatus` contains `lastTemp`, `lastReport`, `lastAnyEvent`, `lastEventName`, `lastEventValue`, `lastEventDisplayName`, `batteryLevel`, `lastBattery`, and `lastAlert`. The app accepts older `temperatureDevices` settings and migrates useful timestamps from `lastChange` and `lastReport` when newer fields are absent.
+
+`lastBattery` is only a battery-replacement timestamp after Unix-value validation. Battery percentage belongs in `batteryLevel`; legacy values must not be silently reinterpreted as replacement dates.
+
+## Trust and Data Boundaries
+
+Device attributes, event names, event values, display names, and driver metadata originate outside the app and may be absent or malformed. Filtering, null checks, date parsing, Unix timestamp validation, and optional-attribute helpers contain that uncertainty.
+
+Data remains within the user's Hubitat environment except when the user configures a notification device whose own driver or service may deliver messages elsewhere. The app does not manage that device's authentication or transport.
+
+## Failure Handling and Operations
+
+- Scheduling failures are caught and logged as errors.
+- Unsupported devices and attributes are skipped; debug logging can explain filtered selections.
+- Events without a device ID are ignored with a warning.
+- Missing notification-device configuration produces a warning instead of a delivery attempt.
+- Missing optional context is displayed as `N/A` rather than preventing evaluation.
+- Reinstalling a previous known-good source version is the rollback mechanism. State compatibility should be reviewed before any rollback across schema changes.
+
+Runtime observability is provided by Hubitat logs and notification outcomes. Manual Hubitat verification should cover installation, update/resubscription, event receipt, scheduled evaluation, filtering, cooldown behavior, and notification configuration for behavior-changing releases.
