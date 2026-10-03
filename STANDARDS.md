@@ -7,6 +7,7 @@
 - Preserve Hubitat lifecycle behavior, settings compatibility, and persisted state migrations unless the approved change explicitly replaces them.
 - Use defensive helpers for driver properties and optional attributes. Do not assume every battery-capable device exposes temperature or `lastBattery`.
 - Key `state.deviceStatus` by device ID string and keep state-field meaning consistent across initialization, event handling, and scheduled checks.
+- Validate per-device primary selections against the supported primary candidate list and attributes currently exposed by the device. Do not infer primary purpose or migrate any-event timestamps into primary state.
 - Use `formatLogTimestamp(Date)` for user-facing and debug dates and `formatUnixTimestamp(value)` for validated battery-replacement timestamps.
 - Use `battery` or `batteryLevel` for percentage and `lastBattery` only for replacement time.
 - Keep comments and logs concise and avoid claims that a cached battery value proves device liveness.
@@ -34,7 +35,8 @@ For app behavior changes, manually exercise relevant scenarios on Hubitat where 
 
 - Fresh installation and update/resubscription behavior.
 - Real hardware filtering and rejection of virtual, custom, or non-battery devices.
-- Supported event handling and updates to `lastAnyEvent` and temperature-specific state.
+- Supported event handling and updates to `lastAnyEvent`, configured primary-event state, and temperature-specific state.
+- Primary selection changes, removal, missing cached states, and unconfigured-device warnings without changes to any-event alert behavior.
 - Scheduled checks at supported intervals, threshold comparison, and 24-hour alert cooldown.
 - Notifications enabled with and without a selected notification device.
 - Missing optional attributes, malformed persisted values, timezone formatting, and migration from older state.

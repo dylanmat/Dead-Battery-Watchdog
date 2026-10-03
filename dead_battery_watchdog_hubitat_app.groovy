@@ -1,9 +1,9 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "2.0.2"
+@Field final String APP_VERSION = "2.1.0"
 @Field final String APP_BRANCH  = "main"          // "main"
-@Field final String APP_UPDATED = "2026-06-29"    // ISO date is clean
+@Field final String APP_UPDATED = "2026-10-03"    // ISO date is clean
 @Field final List<String> MONITORED_ATTRIBUTES = [
     "temperature",
     "humidity",
@@ -26,6 +26,25 @@ import groovy.transform.Field
     "carbonMonoxide",
     "powerSource"
 ]
+@Field final List<String> PRIMARY_ATTRIBUTE_CANDIDATES = [
+    "temperature",
+    "humidity",
+    "contact",
+    "motion",
+    "acceleration",
+    "water",
+    "pushed",
+    "held",
+    "released",
+    "doubleTapped",
+    "switch",
+    "lock",
+    "presence",
+    "activity",
+    "illuminance",
+    "smoke",
+    "carbonMonoxide"
+]
 
 definition(
     name: APP_NAME,
@@ -44,7 +63,24 @@ definition(
 
 preferences {
     section("Select devices to monitor") {
-        input "monitoredDevices", "capability.battery", title: "Monitored Battery Hardware Devices", multiple: true, required: false
+        input "monitoredDevices", "capability.battery", title: "Monitored Battery Hardware Devices", multiple: true, required: false, submitOnChange: true
+    }
+    def configuredDevices = monitoredDeviceList()
+    if (configuredDevices) {
+        section("Select each device's primary function") {
+            paragraph "Primary attributes represent the device's main purpose. They are tracked separately but do not change alerts in v2.1."
+            configuredDevices.each { device ->
+                def availableAttributes = availablePrimaryAttributes(device)
+                if (availableAttributes) {
+                    input primaryAttributeSettingName(device), "enum", title: "${device.displayName} primary attributes", options: availableAttributes, multiple: true, required: false, submitOnChange: true
+                    if (!configuredPrimaryAttributes(device)) {
+                        paragraph "${device.displayName} has no primary attributes selected. Any-event monitoring will continue."
+                    }
+                } else {
+                    paragraph "${device.displayName} exposes no supported primary-function attributes. Any-event monitoring will continue."
+                }
+            }
+        }
     }
     section("Configuration") {
         input "inactiveThreshold", "number", title: "Alert if no device event for (hours)", defaultValue: 24
@@ -103,6 +139,11 @@ def initialize() {
         log.debug "Skipping hardware devices without battery capability: ${skippedNonBatteryDevices.collect { it.displayName }.join(', ')}"
     }
 
+    def unconfiguredDevices = devices.findAll { !configuredPrimaryAttributes(it) }
+    if (unconfiguredDevices) {
+        log.warn "Primary-function tracking is not configured for: ${unconfiguredDevices.collect { it.displayName }.join(', ')}. Any-event monitoring will continue."
+    }
+
     devices.each { device ->
         MONITORED_ATTRIBUTES.each { attributeName ->
             if (hasAttribute(device, attributeName)) {
@@ -122,6 +163,7 @@ def initialize() {
         def lastReportDate = latestDate([currentTempState?.date, existingStatus.lastReport, existingStatus.lastChange], now)
         def currentEventState = mostRecentCurrentState(device)
         def lastAnyEventDate = latestDate([currentEventState?.date, existingStatus.lastAnyEvent, existingStatus.lastReport, existingStatus.lastChange], now)
+        def primaryTracking = reconciledPrimaryTracking(device, existingStatus)
 
         state.deviceStatus[key] = [
             lastTemp: temp,
@@ -132,9 +174,13 @@ def initialize() {
             lastEventName: existingStatus.lastEventName ?: currentEventState?.name,
             lastEventValue: valueOrDefault(existingStatus.lastEventValue, currentEventState?.value),
             lastEventDisplayName: existingStatus.lastEventDisplayName ?: null,
+            primaryAttributes: primaryTracking.primaryAttributes,
+            lastPrimaryEvent: primaryTracking.lastPrimaryEvent,
+            lastPrimaryEventName: primaryTracking.lastPrimaryEventName,
+            lastPrimaryEventValue: primaryTracking.lastPrimaryEventValue,
             lastAlert: existingStatus.lastAlert ?: null
         ]
-        if (enableDebug) log.debug "Initial state for ${device.displayName}: last event @ ${formatLogTimestamp(lastAnyEventDate)}, temperature: ${formatOptionalValue(temp, ' deg')}, battery: ${formatOptionalValue(batteryLevel, '%')}, last battery replacement: ${formatUnixTimestamp(lastBattery)}"
+        if (enableDebug) log.debug "Initial state for ${device.displayName}: last event @ ${formatLogTimestamp(lastAnyEventDate)}, last primary event @ ${formatLogTimestamp(primaryTracking.lastPrimaryEvent)}, temperature: ${formatOptionalValue(temp, ' deg')}, battery: ${formatOptionalValue(batteryLevel, '%')}, last battery replacement: ${formatUnixTimestamp(lastBattery)}"
     }
 }
 
@@ -162,6 +208,15 @@ def deviceEventHandler(evt) {
     def lastBattery = device ? currentLastBatteryValue(device) : null
     def status = state.deviceStatus?.get(key) ?: [:]
     def previousTemp = status.lastTemp
+    def primaryAttributes = device ? configuredPrimaryAttributes(device) : normalizePrimaryAttributes(status.primaryAttributes)
+
+    if (device && normalizePrimaryAttributes(status.primaryAttributes) != primaryAttributes) {
+        def primaryTracking = reconciledPrimaryTracking(device, status)
+        status.primaryAttributes = primaryTracking.primaryAttributes
+        status.lastPrimaryEvent = primaryTracking.lastPrimaryEvent
+        status.lastPrimaryEventName = primaryTracking.lastPrimaryEventName
+        status.lastPrimaryEventValue = primaryTracking.lastPrimaryEventValue
+    }
 
     status.lastAnyEvent = now
     status.lastEventName = evt.name
@@ -170,6 +225,13 @@ def deviceEventHandler(evt) {
     status.batteryLevel = batteryLevel
     status.lastBattery = lastBattery
     status.lastAlert = null
+    status.primaryAttributes = primaryAttributes
+
+    if (primaryAttributes.contains(evt.name?.toString())) {
+        status.lastPrimaryEvent = now
+        status.lastPrimaryEventName = evt.name
+        status.lastPrimaryEventValue = evt.value
+    }
 
     if (evt.name == "temperature") {
         status.lastTemp = evt.value
@@ -216,6 +278,7 @@ def checkDevices() {
         def currentEventState = mostRecentCurrentState(device)
         def lastReportDate = latestDate([currentTempState?.date, existingStatus.lastReport, existingStatus.lastChange], null)
         def lastAnyEventDate = latestDate([existingStatus.lastAnyEvent, currentEventState?.date, lastReportDate, existingStatus.lastChange], now)
+        def primaryTracking = reconciledPrimaryTracking(device, existingStatus)
         def status = [
             lastTemp: valueOrDefault(existingStatus.lastTemp, currentTemp),
             lastReport: lastReportDate,
@@ -225,6 +288,10 @@ def checkDevices() {
             lastEventName: existingStatus.lastEventName ?: currentEventState?.name,
             lastEventValue: valueOrDefault(existingStatus.lastEventValue, currentEventState?.value),
             lastEventDisplayName: existingStatus.lastEventDisplayName ?: null,
+            primaryAttributes: primaryTracking.primaryAttributes,
+            lastPrimaryEvent: primaryTracking.lastPrimaryEvent,
+            lastPrimaryEventName: primaryTracking.lastPrimaryEventName,
+            lastPrimaryEventValue: primaryTracking.lastPrimaryEventValue,
             lastAlert: existingStatus.lastAlert ?: null
         ]
 
@@ -268,6 +335,61 @@ private List selectedDeviceList() {
 
 private String deviceKey(def device) {
     return device?.id?.toString()
+}
+
+private String primaryAttributeSettingName(def device) {
+    def key = deviceKey(device)
+    return key ? "primaryAttributes_${key}" : null
+}
+
+private List<String> availablePrimaryAttributes(def device) {
+    return PRIMARY_ATTRIBUTE_CANDIDATES.findAll { hasAttribute(device, it) }
+}
+
+private List<String> configuredPrimaryAttributes(def device) {
+    def settingName = primaryAttributeSettingName(device)
+    def configured = settingName ? settings?.get(settingName) : null
+    return normalizePrimaryAttributes(configured).findAll { hasAttribute(device, it) }
+}
+
+private List<String> normalizePrimaryAttributes(def value) {
+    if (!value) return []
+    def values = value instanceof Collection ? value : [value]
+    def names = values.collect { it?.toString() }
+    return PRIMARY_ATTRIBUTE_CANDIDATES.findAll { names.contains(it) }
+}
+
+private Map reconciledPrimaryTracking(def device, def existingStatus) {
+    def configuredAttributes = configuredPrimaryAttributes(device)
+    if (!configuredAttributes) {
+        return [
+            primaryAttributes: [],
+            lastPrimaryEvent: null,
+            lastPrimaryEventName: null,
+            lastPrimaryEventValue: null
+        ]
+    }
+
+    def existingAttributes = normalizePrimaryAttributes(existingStatus?.primaryAttributes)
+    def currentPrimaryState = mostRecentCurrentState(device, configuredAttributes)
+    def currentPrimaryDate = asDate(currentPrimaryState?.date, null)
+    def existingPrimaryDate = configuredAttributes == existingAttributes ? asDate(existingStatus?.lastPrimaryEvent, null) : null
+
+    if (existingPrimaryDate && (!currentPrimaryDate || existingPrimaryDate.time >= currentPrimaryDate.time)) {
+        return [
+            primaryAttributes: configuredAttributes,
+            lastPrimaryEvent: existingPrimaryDate,
+            lastPrimaryEventName: existingStatus.lastPrimaryEventName,
+            lastPrimaryEventValue: existingStatus.lastPrimaryEventValue
+        ]
+    }
+
+    return [
+        primaryAttributes: configuredAttributes,
+        lastPrimaryEvent: currentPrimaryDate,
+        lastPrimaryEventName: currentPrimaryState?.name,
+        lastPrimaryEventValue: currentPrimaryState?.value
+    ]
 }
 
 private currentBatteryValue(def device) {
@@ -330,9 +452,13 @@ private safeDeviceValue(def device, String propertyName) {
 }
 
 private Map mostRecentCurrentState(def device) {
+    return mostRecentCurrentState(device, MONITORED_ATTRIBUTES)
+}
+
+private Map mostRecentCurrentState(def device, Collection<String> attributeNames) {
     Date latest = null
     Map latestState = null
-    MONITORED_ATTRIBUTES.each { attributeName ->
+    attributeNames.each { attributeName ->
         if (hasAttribute(device, attributeName)) {
             def currentState = device.currentState(attributeName)
             Date date = asDate(currentState?.date, null)

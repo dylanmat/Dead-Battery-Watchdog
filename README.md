@@ -14,16 +14,20 @@ The app is a single self-contained Groovy file with no external runtime dependen
 ## Basic Usage
 
 1. **Select devices:** Choose one or more real hardware devices with the Hubitat `battery` capability. Virtual devices, custom devices, and devices without `battery` are skipped. The app listens for common device events including temperature, humidity, contact, motion, acceleration, water, battery, button, switch, lock, presence, and activity events.
-2. **Pick the inactivity window:** Set how many hours a device can go without any monitored event before the app alerts. The default is 24 hours.
-3. **Decide how often to check:** Pick an interval of 15, 30, or 60 minutes for the periodic health check.
-4. **Configure notifications:** Enable push notifications and optionally select a Hubitat Notification device. Alerts are limited to once per device every 24 hours.
-5. **Save your changes:** The app tracks each device's most recent monitored event, optional temperature context, battery metadata, and last alert time in Hubitat app state.
+2. **Choose primary functions:** For each supported device, optionally select one or more attributes that represent its main purpose. For example, use `contact` for a door sensor or `temperature` and `humidity` for an environmental sensor. Unconfigured devices continue any-event monitoring and produce a configuration warning.
+3. **Pick the inactivity window:** Set how many hours a device can go without any monitored event before the app alerts. The default is 24 hours.
+4. **Decide how often to check:** Pick an interval of 15, 30, or 60 minutes for the periodic health check.
+5. **Configure notifications:** Enable push notifications and optionally select a Hubitat Notification device. Alerts are limited to once per device every 24 hours.
+6. **Save your changes:** The app tracks each device's most recent monitored event, latest configured primary-function event, optional temperature context, battery metadata, and last alert time in Hubitat app state.
+
+Primary-function tracking in v2.1 is informational state for later health classifications. Alerts continue to use the latest supported event of any kind.
 
 ## Configuration Options
 
 | Setting | Description |
 | --- | --- |
 | **Monitored Battery Hardware Devices** | Real hardware devices with the Hubitat `battery` capability whose supported events will be monitored. Virtual devices, custom devices, and devices without `battery` are skipped. |
+| **Primary attributes** | Optional per-device multi-select containing supported functional attributes exposed by that device. Battery, power-source, and tamper events cannot be primary, but they still count toward any-event liveness. |
 | **Alert if no device event for (hours)** | The inactivity threshold that triggers an alert. |
 | **Check interval** | How frequently the app evaluates device activity: 15, 30, or 60 minutes. |
 | **Enable debug logging** | Enables detailed Hubitat logs for troubleshooting. |
@@ -47,7 +51,7 @@ The project maintainer is accountable for product direction, technical changes, 
 
 ## Roadmap
 
-The current v2.0.2 app uses common Hubitat device events from real battery-capable hardware devices as the signal for likely dead, asleep, out-of-range, or non-reporting devices. Future v2 stages will track primary device functions separately and report stale attributes without calling the whole device dead.
+The current v2.1.0 app tracks both any-event liveness and each configured device's latest primary-function event. Alerts still use any-event liveness. Future v2 stages will classify missing primary events and stale attributes without calling an otherwise active device dead.
 
 See [ROADMAP.md](ROADMAP.md) for the staged v2.0 through v2.8 plan.
 

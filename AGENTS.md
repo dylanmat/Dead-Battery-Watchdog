@@ -22,8 +22,9 @@ For project-document conflicts, apply `SECURITY.md`, `STANDARDS.md`, `ARCHITECTU
 
 ## Current Behavior
 
-- App version is `2.0.2`.
+- App version is `2.1.0`.
 - The app subscribes to supported event attributes for selected real hardware devices with the Hubitat `battery` capability and records the most recent parsed event timestamp in `lastAnyEvent`.
+- Users can optionally select one or more exposed functional attributes per device as its primary function. Matching events update separate primary-event state; unconfigured devices continue any-event monitoring with a warning.
 - Virtual devices, custom devices, and devices without `battery` are skipped during subscription, event handling, and scheduled checks.
 - `checkDevices()` runs on a scheduled interval of 15, 30, or 60 minutes.
 - A device alerts when elapsed time since the last supported device event exceeds `inactiveThreshold`.
@@ -40,6 +41,10 @@ For project-document conflicts, apply `SECURITY.md`, `STANDARDS.md`, `ARCHITECTU
 - `lastEventName`: name of the latest supported event.
 - `lastEventValue`: value of the latest supported event.
 - `lastEventDisplayName`: display name from the latest supported event.
+- `primaryAttributes`: validated user-selected attributes representing the device's primary function.
+- `lastPrimaryEvent`: timestamp of the latest configured primary-function event.
+- `lastPrimaryEventName`: name of the latest configured primary-function event.
+- `lastPrimaryEventValue`: value of the latest configured primary-function event.
 - `batteryLevel`: value from the device `battery` attribute, or `N/A`.
 - `lastBattery`: value from the device `lastBattery` attribute. In v1.3.0 and later this means the Unix timestamp for the last battery replacement.
 - `lastAlert`: timestamp of the last dead battery alert.
@@ -59,10 +64,11 @@ Older versions stored battery percentage in `lastBattery`. Do not use persisted 
 - Use defensive helpers for device attributes because not every monitored battery hardware device exposes `temperature` or `lastBattery`.
 - Keep `battery` for battery level and `lastBattery` for the battery replacement timestamp.
 - Treat battery percentage as supporting evidence only, not proof that a sleepy Zigbee device is alive.
+- Do not infer primary functions or migrate `lastAnyEvent`, `lastReport`, or `lastChange` into `lastPrimaryEvent`.
 
 ## Planned v2 Direction
 
-v2.0.2 uses supported Hubitat events from real battery-capable hardware devices as the liveness signal. Future stages will track primary-function events separately, distinguish dead devices from stale attributes, and add health classes, thresholds, alert severity, confidence levels, and manual-test workflows.
+v2.1.0 uses supported Hubitat events from real battery-capable hardware devices as the liveness signal and tracks configured primary-function events separately. Future stages will distinguish dead devices from stale primary functions or attributes and add health classes, thresholds, alert severity, confidence levels, and manual-test workflows.
 
 Follow `ROADMAP.md` as the canonical plan. Do not imply that planned behavior is already released. When a roadmap stage is completed, mark its heading with `Complete YYYY-MM-DD`.
 

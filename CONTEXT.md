@@ -28,15 +28,15 @@ The project maintainer is accountable for product direction, technical design, s
 - **Battery level (`battery`):** the device's reported charge percentage. It is supporting context and may be stale.
 - **Battery replacement (`lastBattery`):** an optional Unix timestamp recording when a battery was replaced. Legacy persisted values must be validated before being treated as timestamps.
 - **Any-event liveness (`lastAnyEvent`):** the latest supported parsed event from a monitored device and the released app's primary liveness signal.
-- **Primary function:** the event stream representing a device's main purpose, planned for a later roadmap stage.
+- **Primary function:** one or more user-selected functional attributes representing a device's main purpose. v2.1 tracks their latest event separately from any-event liveness.
 - **Attribute stale:** a planned classification for an attribute that stopped updating while other useful events show that the device remains active.
 - **Dead threshold:** the allowed period without qualifying activity before the app raises an alert.
 
 ## Current State
 
-Version 2.0.2 subscribes to supported attributes on selected battery-capable hardware devices. It records the latest parsed event, checks devices every 15, 30, or 60 minutes, and alerts after the configurable inactivity threshold. Alerts include event, temperature, battery-level, and battery-replacement context where available and are throttled to once per device every 24 hours.
+Version 2.1.0 subscribes to supported attributes on selected battery-capable hardware devices. It records the latest parsed event and the latest event from each device's optional user-selected primary attributes. It checks devices every 15, 30, or 60 minutes and alerts after the configurable any-event inactivity threshold. Alerts include event, temperature, battery-level, and battery-replacement context where available and are throttled to once per device every 24 hours.
 
-The released app does not yet track primary-function events separately, classify stale attributes, assign health classes or confidence levels, or manage manual-test workflows. Those capabilities remain planned in `ROADMAP.md`.
+Primary tracking does not yet affect alerts. The app does not classify stale primary functions or attributes, assign health classes or confidence levels, or manage manual-test workflows. Those capabilities remain planned in `ROADMAP.md`.
 
 ## Success and Invariants
 
@@ -46,6 +46,7 @@ Changes must preserve:
 
 - Defensive filtering of virtual, custom, non-hardware, and non-battery devices.
 - Existing state migrations, especially `lastChange` to `lastReport` and v1 `lastReport` to v2 `lastAnyEvent`.
+- User-selected primary attributes and their event timestamps without inferring a device's purpose or migrating secondary timestamps into primary state.
 - Hubitat-location timestamp formatting and validation of `lastBattery` seconds or milliseconds.
 - The distinction between released behavior in the source and future behavior in the roadmap.
 - A self-contained release artifact with no external runtime dependency.

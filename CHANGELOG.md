@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.0 (2026-10-03)
+- Add optional per-device selection of one or more primary-function attributes from the functional attributes each device exposes.
+- Track the latest configured primary event separately in `lastPrimaryEvent` while retaining `lastAnyEvent` as the alerting signal.
+- Preserve primary history only while the validated selection is unchanged; reseed changed selections from matching cached state without fabricating a new event.
+- Leave upgraded and newly selected devices unconfigured by default, warn users, and continue existing any-event monitoring without inferred primary functions.
+
 ## v2.0.2 (2026-06-29)
 - Narrow device selection to hardware devices that expose Hubitat's `battery` capability.
 - Require monitored devices to pass both hardware-device filtering and battery-capability filtering at runtime.

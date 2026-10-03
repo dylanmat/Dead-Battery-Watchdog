@@ -14,7 +14,7 @@ If a future feature requires a credential or external service, define its data f
 
 - Users explicitly select the battery-capable devices the app may observe and, optionally, the notification device it may invoke.
 - The app reads supported device attributes and metadata needed for hardware filtering, state migration, event context, and alert evaluation.
-- Persistent Hubitat app state contains device IDs, event names and values, display names, timestamps, temperature, battery level, battery replacement value, and last-alert time.
+- Persistent Hubitat app state contains device IDs, configured primary-attribute names, event names and values, display names, timestamps, temperature, battery level, battery replacement value, and last-alert time.
 - Debug and warning logs may expose device names, event values, timestamps, temperature, and battery context to people with hub log access.
 - Alert text contains similar device context and may leave the hub through the user-selected notification device. That device and its driver control any downstream transport, account, and retention.
 
@@ -22,7 +22,7 @@ Collect and retain only data needed for monitoring, troubleshooting, state migra
 
 ## Input and Action Boundaries
 
-Device events and driver metadata are untrusted runtime inputs. Continue to validate device eligibility, optional attributes, device IDs, dates, Unix timestamps, and missing values before using them. A battery percentage or cached current state must not be treated as proof that a device is presently reachable.
+Device events, saved primary selections, and driver metadata are untrusted runtime inputs. Continue to validate device eligibility, configured and optional attributes, device IDs, dates, Unix timestamps, and missing values before using them. A battery percentage or cached current state must not be treated as proof that a device is presently reachable.
 
 The app's consequential action is sending an alert through the selected Hubitat notification device. It must remain controlled by the user's `sendPush` setting and selected device. Missing configuration should fail closed to a warning log rather than selecting another destination.
 
