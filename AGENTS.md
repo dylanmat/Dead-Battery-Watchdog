@@ -22,7 +22,7 @@ For project-document conflicts, apply `SECURITY.md`, `STANDARDS.md`, `ARCHITECTU
 
 ## Current Behavior
 
-- Local and deployed app code are the `2.2.0` candidate. Hubitat compilation and exact-source readback passed on 2026-10-11; installed-instance activation/runtime validation remain pending. These checks do not complete roadmap stages.
+- Local and deployed app code are the `2.2.1` candidate. Hubitat compilation and exact-source readback passed on 2026-10-11; installed-instance activation/runtime validation remain pending. The patch aligns decimal-field minimums to 0.01-hour UI increments while retaining existing runtime threshold compatibility. These checks do not complete roadmap stages.
 - The app subscribes to supported event attributes for selected real hardware devices with the Hubitat `battery` capability and records the most recent parsed event timestamp in `lastAnyEvent`.
 - Users can optionally select one or more exposed functional attributes per device as its primary function. Any matching primary event refreshes the aggregate primary clock; unconfigured devices continue any-event monitoring with a warning. Optional primary inactivity thresholds and individually configured secondary freshness thresholds are disabled by default.
 - Virtual devices, custom devices, and devices without `battery` are skipped during subscription, event handling, and scheduled checks.
@@ -73,7 +73,7 @@ Older versions stored battery percentage in `lastBattery`. Do not use persisted 
 
 ## Planned v2 Direction
 
-The v2.2.0 candidate uses supported Hubitat events as the liveness signal and separates device silence from stale primary functions and secondary attributes. Missing history uses observation periods without invented timestamps. Future stages add health classes, recommended threshold profiles, alert severity, confidence levels, and manual-test workflows. v2.1 and v2.2 completion markers await Hubitat evidence.
+The v2.2.1 candidate uses supported Hubitat events as the liveness signal and separates device silence from stale primary functions and secondary attributes. Missing history uses observation periods without invented timestamps. Future stages add health classes, recommended threshold profiles, alert severity, confidence levels, and manual-test workflows. v2.1 and v2.2 completion markers await Hubitat evidence.
 
 Follow `ROADMAP.md` as the canonical plan. Do not imply that planned behavior is already released. When a roadmap stage is completed, mark its heading with `Complete YYYY-MM-DD`.
 

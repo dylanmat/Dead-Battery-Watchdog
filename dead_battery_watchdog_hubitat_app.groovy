@@ -1,7 +1,7 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "2.2.0"
+@Field final String APP_VERSION = "2.2.1"
 @Field final String APP_BRANCH  = "main"          // "main"
 @Field final String APP_UPDATED = "2026-10-11"    // ISO date is clean
 @Field final List<String> MONITORED_ATTRIBUTES = [
@@ -74,7 +74,7 @@ preferences {
                 if (availableAttributes) {
                     input primaryAttributeSettingName(device), "enum", title: "${device.displayName} primary attributes", options: availableAttributes, multiple: true, required: false, submitOnChange: true
                     if (configuredPrimaryAttributes(device)) {
-                        input "primaryThreshold_${deviceKey(device)}", "decimal", title: "${device.displayName} primary inactivity threshold (hours; blank disables)", required: false, range: "0.001..1000000"
+                        input "primaryThreshold_${deviceKey(device)}", "decimal", title: "${device.displayName} primary inactivity threshold (hours; blank disables)", required: false, range: "0.01..1000000"
                     }
                     if (!configuredPrimaryAttributes(device)) {
                         paragraph "${device.displayName} has no primary attributes selected. Any-event monitoring will continue."
@@ -91,7 +91,7 @@ preferences {
                 if (secondaryOptions) {
                     input "secondaryAttributes_${deviceKey(device)}", "enum", title: "${device.displayName} secondary attributes", options: secondaryOptions, multiple: true, required: false, submitOnChange: true
                     configuredSecondaryAttributes(device).each { attributeName ->
-                        input "attributeThreshold_${deviceKey(device)}_${attributeName}", "decimal", title: "${device.displayName} ${attributeName} freshness threshold (hours; blank disables)", required: false, range: "0.001..1000000"
+                        input "attributeThreshold_${deviceKey(device)}_${attributeName}", "decimal", title: "${device.displayName} ${attributeName} freshness threshold (hours; blank disables)", required: false, range: "0.01..1000000"
                     }
                 }
             }

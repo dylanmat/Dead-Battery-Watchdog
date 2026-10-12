@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.2.1 candidate (2026-10-11; threshold input correction)
+- Align primary and secondary decimal-field minimums with Hubitat's 0.01-hour input increments so whole-hour values such as 48 pass browser validation.
+- New UI values start at 0.01 hours in hundredth-hour increments. Runtime parsing retains the earlier 0.001-hour minimum for existing saved settings; event monitoring, migrations, and cooldowns are unchanged.
+- Add a regression scenario for both field types and representative whole/fractional-hour values.
+
 ## v2.2.0 candidate (2026-10-11; deployed, runtime validation pending)
 - Add optional per-device primary inactivity thresholds and per-secondary-attribute freshness thresholds; all new freshness checks default to disabled.
 - Distinguish device silence from stale primary functions and attributes while other supported events remain recent; prioritize device-silence alerts.

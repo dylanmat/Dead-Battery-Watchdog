@@ -4,7 +4,7 @@ Dead Battery Watchdog is a Hubitat app that monitors selected battery-capable ha
 
 The app is a single self-contained Groovy file with no external runtime dependencies. Hubitat users paste the source directly into Apps Code.
 
-The repository contains the **v2.2.0 candidate**, with local behavioral verification and successful Hubitat compilation/deployment on 2026-10-11. The saved hub source exactly matches the local artifact. Installed-instance activation and runtime validation remain pending; roadmap stages are not marked complete until that evidence exists.
+The repository contains the **v2.2.1 candidate**, with local behavioral verification and successful Hubitat compilation/deployment on 2026-10-11. It corrects the v2.2.0 decimal-field validation that rejected whole-hour thresholds. The saved hub source exactly matches the local artifact. Installed-instance activation and full runtime validation remain pending; roadmap stages are not marked complete until that evidence exists.
 
 ## Installation
 
@@ -35,7 +35,7 @@ Freshness monitoring is disabled by default, including on upgrades. Secondary op
 | **Primary attributes** | Optional per-device multi-select containing supported functional attributes exposed by that device. Battery, power-source, and tamper events cannot be primary, but they still count toward any-event liveness. |
 | **Primary inactivity threshold** | Optional per-device hours without any configured primary event before warning while supported activity remains recent. Blank disables. |
 | **Secondary attributes** | Optional per-device selection from supported attributes exposed by the device, excluding configured primary attributes. |
-| **Attribute freshness threshold** | Optional hours for each selected secondary attribute. Blank disables; valid freshness thresholds are 0.001 through 1,000,000 hours and must resolve to whole milliseconds. |
+| **Attribute freshness threshold** | Optional hours for each selected secondary attribute. Blank disables. New primary and secondary UI values use 0.01-hour increments from 0.01 through 1,000,000 hours; whole hours such as 48 are valid. Runtime parsing preserves existing saved thresholds down to 0.001 hours when they resolve to whole milliseconds. |
 | **Alert if no device event for (hours)** | The inactivity threshold that triggers an alert. |
 | **Check interval** | How frequently the app evaluates device activity: 15, 30, or 60 minutes. |
 | **Enable debug logging** | Enables detailed Hubitat logs for troubleshooting. |
@@ -59,7 +59,7 @@ The project maintainer is accountable for product direction, technical changes, 
 
 ## Roadmap
 
-The v2.2.0 candidate distinguishes device silence, overdue primary functions, and stale secondary attributes. Health classes, recommended threshold profiles, confidence labels, and manual-test workflows remain future work.
+The v2.2.1 candidate distinguishes device silence, overdue primary functions, and stale secondary attributes. Health classes, recommended threshold profiles, confidence labels, and manual-test workflows remain future work.
 
 See [ROADMAP.md](ROADMAP.md) for the staged v2.0 through v2.8 plan.
 

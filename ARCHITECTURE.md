@@ -42,6 +42,8 @@ The v2.2.0 candidate adds:
 
 Primary monitoring uses an aggregate clock: any selected primary attribute refreshes it. Secondary checks have individual clocks and cannot duplicate configured primary attributes. Blank or invalid optional thresholds disable their checks; an invalid any-event threshold falls back to 24 hours. Configuration changes may immediately expose genuinely old cached history; missing history receives a new observation period.
 
+v2.2.1 aligns primary/secondary decimal input ranges to `0.01..1000000`. A `0.001` minimum combined with Hubitat's 0.01 step offset the browser's valid values and rejected whole hours. The runtime's earlier 0.001-hour minimum remains supported for persisted settings; monitoring and state semantics are unchanged.
+
 Primary attributes are stored as a validated snapshot. When the configuration changes, prior aggregate primary-event metadata is discarded and reseeded only from matching cached states or known per-attribute event history belonging to the new selection. Any-event and legacy temperature timestamps are never migrated into primary state.
 
 `lastBattery` is only a battery-replacement timestamp after Unix-value validation. Battery percentage belongs in `batteryLevel`; legacy values must not be silently reinterpreted as replacement dates.

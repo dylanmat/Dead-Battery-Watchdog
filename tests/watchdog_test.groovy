@@ -291,4 +291,18 @@ check('configuration exposes opt-in controls and excludes primary/unsupported se
     assert inputs.findAll { it.name.startsWith('attributeThreshold_') }*.name as Set == ['attributeThreshold_42_temperature', 'attributeThreshold_42_battery'] as Set
     assert !inputs.find { it.name == 'primaryThreshold_42' }.options.containsKey('defaultValue')
 }
+check('primary and secondary UI ranges accept whole-hour and hundredth-hour values') {
+    def thresholdInputs = inputs.findAll { it.name.startsWith('primaryThreshold_') || it.name.startsWith('attributeThreshold_') }
+    assert thresholdInputs.size() == 3
+    thresholdInputs.each { field ->
+        def bounds = field.options.range.split(/\.\./).collect { new BigDecimal(it) }
+        [0.01G, 0.25G, 1G, 12G, 24G, 48G, 48.5G, 1000000G].each { hours ->
+            assert hours >= bounds[0] && hours <= bounds[1]
+            assert (hours - bounds[0]).remainder(0.01G) == 0G
+            assert app.positiveHoursMillis(hours) != null
+        }
+    }
+    assert (48G - 0.001G).remainder(0.01G) != 0G // Original browser step mismatch.
+    assert app.positiveHoursMillis(0.001G) == 3600L // Preserve previously saved thresholds.
+}
 println "${checks} behavioral scenarios passed against ${source.name}"
