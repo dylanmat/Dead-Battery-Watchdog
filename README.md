@@ -1,64 +1,75 @@
 # Dead Battery Watchdog
 
-Dead Battery Watchdog is a Hubitat app that monitors temperature-capable devices to catch sensors that have likely lost power. When a device stops reporting temperature events, the app sends a notification so you can replace the battery before the device is needed.
+Dead Battery Watchdog is a Hubitat app that monitors selected battery-capable hardware devices to catch sensors that have likely stopped reporting. When a monitored battery hardware device stops sending supported Hubitat events, the app sends a notification so you can investigate the battery, range, sleep state, or Zigbee routing before the device is needed.
+
+The app is a single self-contained Groovy file with no external runtime dependencies. Hubitat users paste the source directly into Apps Code.
+
+The repository contains the **v2.2.1 candidate**, with local behavioral verification and successful Hubitat compilation/deployment on 2026-10-11. It corrects the v2.2.0 decimal-field validation that rejected whole-hour thresholds. The saved hub source exactly matches the local artifact. Installed-instance activation and full runtime validation remain pending; roadmap stages are not marked complete until that evidence exists.
 
 ## Installation
 
 1. In Hubitat, open **Apps Code** and choose **+ New App**.
 2. Paste the contents of [`dead_battery_watchdog_hubitat_app.groovy`](dead_battery_watchdog_hubitat_app.groovy) into the editor and save.
 3. Click **Apps** -> **+ Add User App** and select **Dead Battery Watchdog**.
-4. Configure the app (see below) and click **Done** to activate monitoring.
+4. Configure the app and click **Done** to activate monitoring.
 
 ## Basic Usage
 
-1. **Select devices:** Choose one or more temperature-measurement devices to watch. Devices with a `battery` attribute will have their last reported battery level included in alerts. Devices with a `lastBattery` attribute will also include the last battery replacement date.
-2. **Pick the inactivity window:** Set how many hours a device can go without a temperature report before the app considers the battery dead. The default is 24 hours.
-3. **Decide how often to check:** Pick an interval (15, 30, or 60 minutes) for the periodic health check.
-4. **Configure notifications:** Enable push notifications and optionally pick a Hubitat Notification device. Alerts are limited to once per device every 24 hours, avoiding overnight notification floods.
-5. **Save your changes:** After saving, the app keeps track of each device's last temperature, the timestamp of its most recent temperature report, battery metadata, and when the last alert was sent.
+1. **Select devices:** Choose one or more real hardware devices with the Hubitat `battery` capability. Virtual devices, custom devices, and devices without `battery` are skipped. The app listens for common device events including temperature, humidity, contact, motion, acceleration, water, battery, button, switch, lock, presence, and activity events.
+2. **Choose primary functions:** For each supported device, optionally select one or more attributes that represent its main purpose. For example, use `contact` for a door sensor or `temperature` and `humidity` for an environmental sensor. Unconfigured devices continue any-event monitoring and produce a configuration warning.
+3. **Pick the inactivity window:** Set how many hours a device can go without any monitored event before the app alerts. The default is 24 hours.
+4. **Decide how often to check:** Pick an interval of 15, 30, or 60 minutes for the periodic health check.
+5. **Optionally monitor freshness:** Set a per-device primary inactivity threshold and/or select secondary attributes with individual freshness thresholds. Blank thresholds disable these checks. An event from any selected primary attribute refreshes the primary-function clock. Contact sensors, buttons, and rarely used devices may naturally remain quiet; choose thresholds accordingly.
+6. **Configure notifications:** Enable push notifications and optionally select a Hubitat Notification device. Device-silence alerts and each freshness issue have independent 24-hour cooldowns. Newly due freshness warnings are combined into one message per device per scheduled check.
+7. **Save your changes:** The app tracks known events, enabled freshness checks, observation periods, and alert cooldowns in Hubitat app state.
+
+Device silence takes precedence: if no supported event arrives within the existing inactivity window, the app warns that the device may be dead, asleep, out of range, or affected by routing failure. While other supported activity remains recent, overdue primary functions or secondary attributes receive freshness warnings instead. Stale battery reporting alone never establishes device failure.
+
+Freshness monitoring is disabled by default, including on upgrades. Secondary options contain exposed supported attributes excluding the configured primary selection. Each selected secondary attribute needs its own positive threshold. If no valid event history exists, the app starts a stable observation period and waits one configured threshold before reporting that no event has been observed. It never invents a last-event timestamp. Cached Hubitat values do not refresh clocks; valid stored event dates may seed history.
 
 ## Configuration Options
 
 | Setting | Description |
 | --- | --- |
-| **Temperature Devices** | The sensors whose temperature reports will be monitored. |
-| **Alert if no temperature report for (hours)** | The inactivity threshold that triggers a notification. |
-| **Check interval** | How frequently the app evaluates device activity (15, 30, or 60 minutes). |
-| **Enable debug logging** | Turn on detailed logs while troubleshooting. |
-| **Send push notification for dead battery alerts** | Enable or disable push notifications. |
-| **Notification Device** | Optional Hubitat notification device used to deliver alerts. |
+| **Monitored Battery Hardware Devices** | Real hardware devices with the Hubitat `battery` capability whose supported events will be monitored. Virtual devices, custom devices, and devices without `battery` are skipped. |
+| **Primary attributes** | Optional per-device multi-select containing supported functional attributes exposed by that device. Battery, power-source, and tamper events cannot be primary, but they still count toward any-event liveness. |
+| **Primary inactivity threshold** | Optional per-device hours without any configured primary event before warning while supported activity remains recent. Blank disables. |
+| **Secondary attributes** | Optional per-device selection from supported attributes exposed by the device, excluding configured primary attributes. |
+| **Attribute freshness threshold** | Optional hours for each selected secondary attribute. Blank disables. New primary and secondary UI values use 0.01-hour increments from 0.01 through 1,000,000 hours; whole hours such as 48 are valid. Runtime parsing preserves existing saved thresholds down to 0.001 hours when they resolve to whole milliseconds. |
+| **Alert if no device event for (hours)** | The inactivity threshold that triggers an alert. |
+| **Check interval** | How frequently the app evaluates device activity: 15, 30, or 60 minutes. |
+| **Enable debug logging** | Enables detailed Hubitat logs for troubleshooting. |
+| **Send push notifications for device-silence alerts and freshness warnings** | Enables or disables delivery for both types; preserves the existing `sendPush` setting. |
+| **Notification Device** | Optional Hubitat notification-capable device used to deliver alerts. If notifications are enabled without one, the app logs a warning. |
+
+## Documentation
+
+The project maintainer is accountable for product direction, technical changes, security policy, quality review, workflow, and releases. Responsibilities may be delegated for a change, but the handoff and verification evidence should be recorded.
+
+| Document | Purpose | Update when |
+| --- | --- | --- |
+| [CONTEXT.md](CONTEXT.md) | Project goals, users, constraints, terminology, and current state | Product scope, assumptions, or supported behavior changes |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Runtime components, data flow, integrations, state, and failure handling | Runtime design, state, integrations, or operational behavior changes |
+| [SECURITY.md](SECURITY.md) | Repository and Hubitat data, permission, credential, and incident rules | Permissions, data handling, notification exposure, or security controls change |
+| [STANDARDS.md](STANDARDS.md) | Implementation, verification, review, and release conventions | Engineering or release practices change |
+| [DECISIONS.md](DECISIONS.md) | Significant project decisions and their rationale | A durable design or policy tradeoff is accepted or superseded |
+| [ROADMAP.md](ROADMAP.md) | Planned v2 health-monitoring stages | Priorities, sequencing, or milestone status changes |
+| [CHANGELOG.md](CHANGELOG.md) | Released behavior and historical changes | A release is prepared |
+| [AGENTS.md](AGENTS.md) | Project context and workflow for coding agents | Runtime facts, agent responsibilities, or workflow rules change |
+
+## Roadmap
+
+The v2.2.1 candidate distinguishes device silence, overdue primary functions, and stale secondary attributes. Health classes, recommended threshold profiles, confidence labels, and manual-test workflows remain future work.
+
+See [ROADMAP.md](ROADMAP.md) for the staged v2.0 through v2.8 plan.
 
 ## Changelog
 
-### v1.3.0 (2026-06-28)
-- Treat `lastBattery` as the Unix timestamp for the last battery replacement.
-- Include the last battery replacement date in dead battery alerts using the app's local Hubitat timestamp format.
-- Store battery percentage separately from `lastBattery` so older state does not confuse battery level with replacement time.
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
-### v1.2.4 (2026-06-14)
-- Track the timestamp of the latest temperature report, even when the reported value is unchanged.
-- Alert only when a device stops reporting temperature events, preventing false alarms from stable rounded temperatures.
-- Preserve existing device state on update and migrate older `lastChange` timestamps to `lastReport`.
+## Verification
 
-### v1.2.3 (2026-02-13)
-- Format initial-state debug timestamps in the same Hubitat-style local format used by unchanged-temperature and alert logs.
-- Align `checkDevices()` run-time debug logging with the same local timestamp format for consistency.
-
-### v1.2.2 (2026-02-13)
-- Format "Last Change" timestamps in logs and alerts using Hubitat-style local time (`yyyy-MM-dd hh:mm:ss.SSS a`) to avoid UTC/local confusion.
-- Added safe timestamp parsing helper methods for persisted state values.
-
-### v1.2.1 (2025-11-01)
-- Limit repeat notifications to once every 24 hours per device to prevent alert fatigue.
-- Updated documentation with usage guidance and a historical changelog.
-
-### v1.2.0 (2025-10-25)
-- Added configurable check intervals and inactivity thresholds.
-- Included optional notification device support alongside push notifications.
-- Persist the last temperature, change timestamp, and battery level for each device.
-
-### Earlier releases
-- Initial release established temperature-based monitoring and push notifications. Historical details prior to v1.2.0 were undocumented.
+See [VERIFICATION.md](VERIFICATION.md) for the candidate's local test evidence, limitations, and proposed Hubitat validation and rollback steps. The [Groovy behavioral harness](tests/watchdog_test.groovy) exercises the actual source using simulated Hubitat bindings; it does not contact a hub or deliver real notifications.
 
 ## License
 
