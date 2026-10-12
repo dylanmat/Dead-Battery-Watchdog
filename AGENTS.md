@@ -22,7 +22,7 @@ For project-document conflicts, apply `SECURITY.md`, `STANDARDS.md`, `ARCHITECTU
 
 ## Current Behavior
 
-- Local app version is the `2.2.0` candidate; Hubitat has `2.1.0` deployed. Local simulated checks do not complete roadmap stages; Hubitat validation remains pending.
+- Local and deployed app code are the `2.2.0` candidate. Hubitat compilation and exact-source readback passed on 2026-10-11; installed-instance activation/runtime validation remain pending. These checks do not complete roadmap stages.
 - The app subscribes to supported event attributes for selected real hardware devices with the Hubitat `battery` capability and records the most recent parsed event timestamp in `lastAnyEvent`.
 - Users can optionally select one or more exposed functional attributes per device as its primary function. Any matching primary event refreshes the aggregate primary clock; unconfigured devices continue any-event monitoring with a warning. Optional primary inactivity thresholds and individually configured secondary freshness thresholds are disabled by default.
 - Virtual devices, custom devices, and devices without `battery` are skipped during subscription, event handling, and scheduled checks.

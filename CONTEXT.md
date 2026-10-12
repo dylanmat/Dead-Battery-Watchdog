@@ -36,7 +36,7 @@ The project maintainer is accountable for product direction, technical design, s
 
 The local v2.2.0 candidate subscribes to supported attributes on selected battery-capable hardware devices and retains bounded per-attribute event history. It checks devices every 15, 30, or 60 minutes. Device-silence alerts use the existing any-event threshold. Optional per-device primary and per-secondary-attribute thresholds add freshness warnings while supported events remain recent. All new freshness checks default to disabled. Each issue has an independent 24-hour cooldown, with newly due freshness warnings combined per device. Missing history uses stable observation periods without invented event times.
 
-Hubitat still has v2.1.0 deployed. The v2.2.0 candidate has local simulated evidence but awaits Hubitat compilation and runtime validation, including outstanding v2.1 primary-tracking checks. Health classes, confidence labels, and manual-test workflows remain planned in `ROADMAP.md`.
+Hubitat has the v2.2.0 candidate code deployed after successful compilation and exact-source readback on 2026-10-11. Installed-instance activation and runtime validation remain pending, including outstanding v2.1 primary-tracking checks. Health classes, confidence labels, and manual-test workflows remain planned in `ROADMAP.md`.
 
 ## Success and Invariants
 

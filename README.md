@@ -4,7 +4,7 @@ Dead Battery Watchdog is a Hubitat app that monitors selected battery-capable ha
 
 The app is a single self-contained Groovy file with no external runtime dependencies. Hubitat users paste the source directly into Apps Code.
 
-The repository contains the **v2.2.0 candidate**, with local behavioral verification. Hubitat compilation and runtime validation are pending; v2.1.0 remains deployed on the maintainer's hub. Roadmap stages are not marked complete until their Hubitat evidence exists.
+The repository contains the **v2.2.0 candidate**, with local behavioral verification and successful Hubitat compilation/deployment on 2026-10-11. The saved hub source exactly matches the local artifact. Installed-instance activation and runtime validation remain pending; roadmap stages are not marked complete until that evidence exists.
 
 ## Installation
 

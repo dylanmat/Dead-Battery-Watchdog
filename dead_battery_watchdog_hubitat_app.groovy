@@ -639,13 +639,13 @@ private Date asDate(def value, Date fallback = null) {
         try { return new Date(new BigDecimal(value.toString()).longValueExact()) } catch (ignored) { return fallback }
     }
     String stringValue = value.toString().trim()
+    if (!(stringValue ==~ /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:?\d{2})/)) return fallback
     for (String pattern : ["yyyy-MM-dd'T'HH:mm:ss.SSSZ", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "yyyy-MM-dd'T'HH:mm:ssXXX"]) {
         try {
             def formatter = new java.text.SimpleDateFormat(pattern)
             formatter.setLenient(false)
-            def position = new java.text.ParsePosition(0)
-            def parsed = formatter.parse(stringValue, position)
-            if (parsed && position.index == stringValue.length()) return parsed
+            def parsed = formatter.parse(stringValue)
+            if (parsed) return parsed
         } catch (ignored) { }
     }
     return fallback

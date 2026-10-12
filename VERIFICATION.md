@@ -4,13 +4,13 @@
 
 On 2026-10-11 the maintainer approved local implementation, documentation, and review of the v2.2 plan. The candidate separates device silence from optionally monitored primary/secondary freshness, preserves compatibility, and adds independent cooldowns and stable observation periods.
 
-Local implementation and review are complete. Hubitat compilation, UI/runtime validation, deployment, release publication, and real test notifications have not been performed. A read-only recheck confirmed the hub still holds the original v2.1.0 source. The v2.1 and v2.2 roadmap stages remain pending Hubitat evidence.
+Local implementation/review and authorized code deployment are complete. On 2026-10-11 the maintainer separately approved deployment. Hubitat compiled the v2.2.0 candidate successfully, updated the existing code record from revision 30 to 31, and returned source exactly matching the local artifact. UI/runtime validation, installed-instance activation, publication, and real test notifications have not been performed. The v2.1 and v2.2 roadmap stages remain pending runtime evidence.
 
 ## Tested Artifacts
 
 - Baseline Git revision: `9f892fc4631e5232a04237a082f3b6a8800d3193`.
 - Candidate source: `dead_battery_watchdog_hubitat_app.groovy`, version `2.2.0`, update date `2026-10-11`.
-- Source SHA-256: `9a40ab5c2e9f0f63540007dbbce9f7b703042247763727ef4cbd04b818e06fbe`.
+- Source SHA-256: `5937077c7231d1c7e5b6cf0281eb18aea764b8a696be46025db744ae31e927a1`.
 - Harness: `tests/watchdog_test.groovy`.
 - Harness SHA-256: `df1fc242c8c8552fd76eeef82fd78b5c495892ce4b315056ddf0ad05387278a3`.
 - Runtime: Java 19.0.2 and Groovy 3.0.22, with the matching Groovy dateutil module. Temporary test libraries are ignored under `tmp/`; they are not product dependencies.
@@ -49,19 +49,28 @@ All **21 behavioral scenarios passed**:
 20. Lifecycle resubscription, all three schedules, battery-replacement validation, and location timezone formatting.
 21. Configuration exposes opt-in controls and excludes primary/unsupported secondary attributes.
 
-Static review covers the complete source/documentation change, relative Markdown links, version/date/state terminology, and self-contained source boundaries. No real hub event, device command, notification, or code update was sent.
+Static review covers the complete source/documentation change, relative Markdown links, version/date/state terminology, and self-contained source boundaries. The authorized app-code update was performed; no real device command or test notification was sent.
+
+## Deployment Evidence
+
+- Fresh hub reads confirmed the live v2.1.0 source still matched the reviewed baseline before deployment.
+- Preserved the exact pre-deployment source locally as `tmp/hubitat-870-before-v2.2-revision-30.groovy`; a raw-text comparison passed. Rollback source SHA-256: `201ab3f2dd0d82875556261c189c4f04a95c4f3bcb6cc482890bd567cad866b9`.
+- The first compile rejected `java.text.ParsePosition`. A fresh read confirmed that the failed compile left revision 30 and its source unchanged.
+- Replaced that prohibited helper with complete timestamp-syntax validation and non-lenient `SimpleDateFormat.parse(String)`. Reran all 21 scenarios successfully against the repaired source.
+- Retried using the freshly read revision. Hubitat compiled successfully and returned revision 31. The following code read exactly matched the repaired local source.
+- Read-only installed-app inventory identified one matching, enabled Dead Battery Watchdog instance. No instance configuration was changed or saved through its UI.
 
 ## Review Findings and Limits
 
-- **Blocking for roadmap completion/release:** Hubitat compiler compatibility, configuration rendering, real state serialization, event delivery, scheduling, and notification behavior require authorized runtime evidence. Simulated primary-tracking checks do not complete the outstanding v2.1 Hubitat validation.
+- **Blocking for roadmap completion/release:** Configuration rendering, real state serialization, event delivery, scheduling, and notification behavior require authorized runtime evidence. Hubitat compilation now passes, but simulated primary-tracking checks do not complete the outstanding v2.1 Hubitat validation.
 - **Local review:** No unresolved blocking code finding identified. Future stages remain explicitly planned; no health classes, severity scheme, confidence scores, battery-age calculations, or manual-test workflows were added.
 - **Operational limitation:** Deploying this existing code record affects every installed instance using it. A successful code save alone does not prove that each instance has resubscribed or activated new configuration.
 - **Configuration behavior:** Changed checks may warn immediately if genuine known event history is already overdue. Checks with no valid history get a new observation period. Invalid optional thresholds disable their checks; an invalid any-event threshold uses the existing 24-hour default.
 - **Notification volume:** Cooldowns are independent. A newly overdue issue or recurrence after a genuine recovery can warn within 24 hours of a different issue. Users should choose thresholds appropriate to quiet contacts and buttons.
 
-## Proposed Hubitat Deployment and Validation
+## Hubitat Deployment and Remaining Validation
 
-This procedure is proposed, not executed:
+Code deployment steps 1-3 are complete. Steps 4-6 remain pending:
 
 1. With deployment authorization, re-read the existing Dead Battery Watchdog code record and its latest revision. Compare it against the reviewed baseline; investigate concurrent changes before replacing anything.
 2. Preserve that exact live source as a rollback copy and record its revision/hash. Identify all installed instances using the code and retain their existing settings before runtime validation.
@@ -78,4 +87,4 @@ Reinstall the preserved live v2.1.0 source using a fresh code-record revision an
 
 The implementing agent performed planning follow-through, implementation, documentation, local behavioral verification, and complete-change review. Changed artifacts are the Groovy release source, affected canonical documentation, this evidence/proposal, the behavioral harness, and the temporary-runtime ignore rule. The source remains uncommitted and unpublished.
 
-The maintainer is the next owner for candidate review and deployment/runtime-validation authorization. The agent can then perform the authorized code update and readback; UI configuration/manual event validation needs an available interface or maintainer participation. Pending authorization covers deployment, affected-instance activation/configuration, real test notifications, and eventual publication as applicable.
+The maintainer approved deployment, and the agent completed the authorized code update, compatibility repair, local retest, and exact-source readback. The maintainer is the next owner for installed-instance activation/configuration and runtime validation, including any real test notification authorization. UI configuration/manual event validation needs an available interface or maintainer participation. Publication remains separately authorized.

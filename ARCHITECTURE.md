@@ -64,4 +64,4 @@ Data remains within the user's Hubitat environment except when the user configur
 
 Runtime observability is provided by Hubitat logs and notification outcomes. Manual Hubitat verification should cover installation, update/resubscription, event receipt, scheduled evaluation, filtering, cooldown behavior, and notification configuration for behavior-changing releases.
 
-Local simulated checks and the proposed deployment/rollback procedure are recorded in `VERIFICATION.md`. The candidate has not yet been compiled or exercised on Hubitat. A source update alone is not evidence that installed instances have resubscribed or adopted new configuration.
+Local simulated checks, successful Hubitat compilation/deployment, and the activation/rollback procedure are recorded in `VERIFICATION.md`. The candidate's saved source exactly matches the local artifact; installed-instance activation and runtime validation remain pending. A source update alone is not evidence that installed instances have resubscribed or adopted new configuration.

@@ -49,7 +49,7 @@ Add primary-function tracking so each device can distinguish its main purpose fr
 
 ### v2.2 - Separate Dead Devices From Stale Attributes
 
-Implementation prepared in the v2.2.0 candidate on 2026-10-11. Local behavioral checks are recorded in `VERIFICATION.md`; completion awaits authorized Hubitat compilation and runtime validation. The candidate uses optional explicit primary and secondary thresholds with independent cooldowns. Health classes and recommended threshold defaults remain v2.3 work.
+Implementation prepared and deployed as the v2.2.0 candidate on 2026-10-11. Local behavioral checks, successful Hubitat compilation, and exact-source readback are recorded in `VERIFICATION.md`; completion awaits installed-instance activation and runtime validation. The candidate uses optional explicit primary and secondary thresholds with independent cooldowns. Health classes and recommended threshold defaults remain v2.3 work.
 
 Introduce separate classifications for device liveness and attribute freshness. A temperature-stale device should not be called dead if contact, motion, acceleration, button, water, battery, or other useful events continue.
 
