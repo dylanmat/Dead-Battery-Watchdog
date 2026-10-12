@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.2.0 candidate (2026-10-11; Hubitat validation pending)
+- Add optional per-device primary inactivity thresholds and per-secondary-attribute freshness thresholds; all new freshness checks default to disabled.
+- Distinguish device silence from stale primary functions and attributes while other supported events remain recent; prioritize device-silence alerts.
+- Retain bounded per-attribute event history and stable observation periods for missing history without inventing event timestamps.
+- Add independent 24-hour freshness cooldowns, aggregate newly due warnings per device, and preserve device-silence escalation independently.
+- Reconcile configuration changes, reject invalid/future timestamps, and keep event history monotonic; preserve legacy any-event migrations.
+- Add a local behavioral harness and document deployment, Hubitat validation, and rollback requirements.
+
 ## v2.1.0 (2026-10-03)
 - Add optional per-device selection of one or more primary-function attributes from the functional attributes each device exposes.
 - Track the latest configured primary event separately in `lastPrimaryEvent` while retaining `lastAnyEvent` as the alerting signal.

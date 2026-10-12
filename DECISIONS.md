@@ -20,6 +20,20 @@ Each future record should include:
 
 ## Recorded Decisions
 
+### D-002 - Explicit Opt-In Freshness Checks and Independent Cooldowns
+
+- **ID:** D-002
+- **Date:** 2026-10-11
+- **Status:** Accepted
+- **Owner:** Project maintainer
+- **Context:** Recent secondary events can coexist with a stale primary function or attribute. Mixed device purposes make one inferred freshness threshold unsafe, and one shared cooldown would suppress distinct problems or escalation.
+- **Decision:** Add optional per-device primary inactivity thresholds and per-selected-secondary-attribute freshness thresholds. New checks default to disabled. Any selected primary event refreshes the aggregate primary clock; secondary checks exclude primary attributes and evaluate individually. Prioritize device-silence alerts, deliver freshness warnings only while supported activity is recent, use independent 24-hour issue cooldowns, and combine newly due freshness issues per device per scheduled check. Preserve stable observation periods for missing history without creating event dates. Configuration changes reset check-specific observation/cooldown state while retaining genuine matching event history.
+- **Alternatives:** Automatic profiles and thresholds remain v2.3 work. Requiring every primary attribute to report would change v2.1's accepted aggregate semantics. A shared alert cooldown would let a freshness warning suppress a later device-silence alert.
+- **Consequences:** Users must choose meaningful thresholds for quiet devices. A source upgrade alone does not enable new warnings. New bounded state supports independent classification, history, and throttling; malformed/future dates and stale cached values cannot establish new activity.
+- **Evidence:** Approved v2.2 plan; local behavioral evidence and pending Hubitat checks are recorded in `VERIFICATION.md`.
+- **Approval:** Project maintainer approved local implementation, documentation, and review of the v2.2 plan on 2026-10-11. Deployment, publication, and test notification delivery are not covered.
+- **Related decisions:** D-001.
+
 ### D-001 - Configure Primary Functions Per Device
 
 - **ID:** D-001

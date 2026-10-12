@@ -34,9 +34,9 @@ The project maintainer is accountable for product direction, technical design, s
 
 ## Current State
 
-Version 2.1.0 subscribes to supported attributes on selected battery-capable hardware devices. It records the latest parsed event and the latest event from each device's optional user-selected primary attributes. It checks devices every 15, 30, or 60 minutes and alerts after the configurable any-event inactivity threshold. Alerts include event, temperature, battery-level, and battery-replacement context where available and are throttled to once per device every 24 hours.
+The local v2.2.0 candidate subscribes to supported attributes on selected battery-capable hardware devices and retains bounded per-attribute event history. It checks devices every 15, 30, or 60 minutes. Device-silence alerts use the existing any-event threshold. Optional per-device primary and per-secondary-attribute thresholds add freshness warnings while supported events remain recent. All new freshness checks default to disabled. Each issue has an independent 24-hour cooldown, with newly due freshness warnings combined per device. Missing history uses stable observation periods without invented event times.
 
-Primary tracking does not yet affect alerts. The app does not classify stale primary functions or attributes, assign health classes or confidence levels, or manage manual-test workflows. Those capabilities remain planned in `ROADMAP.md`.
+Hubitat still has v2.1.0 deployed. The v2.2.0 candidate has local simulated evidence but awaits Hubitat compilation and runtime validation, including outstanding v2.1 primary-tracking checks. Health classes, confidence labels, and manual-test workflows remain planned in `ROADMAP.md`.
 
 ## Success and Invariants
 

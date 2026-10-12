@@ -8,6 +8,8 @@
 - Use defensive helpers for driver properties and optional attributes. Do not assume every battery-capable device exposes temperature or `lastBattery`.
 - Key `state.deviceStatus` by device ID string and keep state-field meaning consistent across initialization, event handling, and scheduled checks.
 - Validate per-device primary selections against the supported primary candidate list and attributes currently exposed by the device. Do not infer primary purpose or migrate any-event timestamps into primary state.
+- Keep per-attribute histories bounded to exposed supported attributes, validate secondary selections, and exclude configured primary attributes from secondary checks. Preserve monotonic timestamps and stable missing-history observation periods.
+- Keep device-silence and per-issue cooldowns independent. Unrelated activity must not reset stale-attribute cooldowns; freshness delivery must not suppress device-silence escalation.
 - Use `formatLogTimestamp(Date)` for user-facing and debug dates and `formatUnixTimestamp(value)` for validated battery-replacement timestamps.
 - Use `battery` or `batteryLevel` for percentage and `lastBattery` only for replacement time.
 - Keep comments and logs concise and avoid claims that a cached battery value proves device liveness.
@@ -24,6 +26,8 @@
 
 There is no repository-hosted automated Hubitat runtime test suite. Verification must be proportionate to the change and must distinguish static evidence from behavior observed on a Hubitat hub.
 
+`tests/watchdog_test.groovy` runs the actual app source with simulated Hubitat bindings and devices. Use a temporary local Groovy runtime; it is not a product dependency. Record the source hash, harness hash, runtime, and scenario results in `VERIFICATION.md`. These checks do not establish Hubitat compiler compatibility, UI rendering, real event/state serialization, or notification delivery.
+
 For every change:
 
 - Inspect the complete diff and confirm it matches the approved scope.
@@ -36,7 +40,8 @@ For app behavior changes, manually exercise relevant scenarios on Hubitat where 
 - Fresh installation and update/resubscription behavior.
 - Real hardware filtering and rejection of virtual, custom, or non-battery devices.
 - Supported event handling and updates to `lastAnyEvent`, configured primary-event state, and temperature-specific state.
-- Primary selection changes, removal, missing cached states, and unconfigured-device warnings without changes to any-event alert behavior.
+- Primary/secondary selection changes, threshold changes, removal, missing cached states, and unconfigured-device warnings; disabled freshness checks preserve any-event alert behavior.
+- Independent primary/attribute classification, device-silence precedence, combined warnings, cooldowns, escalation, recovery between checks, and stable observation periods.
 - Scheduled checks at supported intervals, threshold comparison, and 24-hour alert cooldown.
 - Notifications enabled with and without a selected notification device.
 - Missing optional attributes, malformed persisted values, timezone formatting, and migration from older state.

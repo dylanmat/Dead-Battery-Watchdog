@@ -22,13 +22,13 @@ For project-document conflicts, apply `SECURITY.md`, `STANDARDS.md`, `ARCHITECTU
 
 ## Current Behavior
 
-- App version is `2.1.0`.
+- Local app version is the `2.2.0` candidate; Hubitat has `2.1.0` deployed. Local simulated checks do not complete roadmap stages; Hubitat validation remains pending.
 - The app subscribes to supported event attributes for selected real hardware devices with the Hubitat `battery` capability and records the most recent parsed event timestamp in `lastAnyEvent`.
-- Users can optionally select one or more exposed functional attributes per device as its primary function. Matching events update separate primary-event state; unconfigured devices continue any-event monitoring with a warning.
+- Users can optionally select one or more exposed functional attributes per device as its primary function. Any matching primary event refreshes the aggregate primary clock; unconfigured devices continue any-event monitoring with a warning. Optional primary inactivity thresholds and individually configured secondary freshness thresholds are disabled by default.
 - Virtual devices, custom devices, and devices without `battery` are skipped during subscription, event handling, and scheduled checks.
 - `checkDevices()` runs on a scheduled interval of 15, 30, or 60 minutes.
 - A device alerts when elapsed time since the last supported device event exceeds `inactiveThreshold`.
-- Repeat alerts are throttled per device to once every 24 hours using `status.lastAlert`.
+- Device-silence alerts use the existing 24-hour `status.lastAlert` cooldown. Primary/secondary warnings use independent 24-hour `status.issueAlerts` cooldowns and combine newly due freshness issues per device per check. Device silence takes precedence; freshness warnings require recent supported activity.
 - Alerts can be sent through an optional Hubitat notification device when `sendPush` is enabled. Without a selected notification device, the app logs a warning.
 
 ## Device State
@@ -48,6 +48,11 @@ For project-document conflicts, apply `SECURITY.md`, `STANDARDS.md`, `ARCHITECTU
 - `batteryLevel`: value from the device `battery` attribute, or `N/A`.
 - `lastBattery`: value from the device `lastBattery` attribute. In v1.3.0 and later this means the Unix timestamp for the last battery replacement.
 - `lastAlert`: timestamp of the last dead battery alert.
+- `attributeHistory`: bounded latest valid event date/value for each exposed supported attribute.
+- `observationStarted`: stable observation start when any-event history is missing.
+- `freshnessMonitors`: enabled checks with thresholds, selection identity, and stable observation starts.
+- `issueAlerts`: per-primary/per-attribute warning timestamps.
+- `health`: most recent scheduled device/issue classification and evaluation date.
 
 Older versions stored battery percentage in `lastBattery`. Do not use persisted `lastBattery` as a fallback for replacement time unless it is explicitly validated as a Unix timestamp.
 
@@ -68,7 +73,7 @@ Older versions stored battery percentage in `lastBattery`. Do not use persisted 
 
 ## Planned v2 Direction
 
-v2.1.0 uses supported Hubitat events from real battery-capable hardware devices as the liveness signal and tracks configured primary-function events separately. Future stages will distinguish dead devices from stale primary functions or attributes and add health classes, thresholds, alert severity, confidence levels, and manual-test workflows.
+The v2.2.0 candidate uses supported Hubitat events as the liveness signal and separates device silence from stale primary functions and secondary attributes. Missing history uses observation periods without invented timestamps. Future stages add health classes, recommended threshold profiles, alert severity, confidence levels, and manual-test workflows. v2.1 and v2.2 completion markers await Hubitat evidence.
 
 Follow `ROADMAP.md` as the canonical plan. Do not imply that planned behavior is already released. When a roadmap stage is completed, mark its heading with `Complete YYYY-MM-DD`.
 
