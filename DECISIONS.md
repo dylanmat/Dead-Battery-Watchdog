@@ -20,11 +20,25 @@ Each future record should include:
 
 ## Recorded Decisions
 
+### D-003 - Ranked Reporting Signals and Unified Device Configuration
+
+- **ID:** D-003
+- **Date:** 2026-10-17
+- **Status:** Accepted
+- **Owner:** Project maintainer
+- **Context:** Separate primary/secondary lists and opt-in thresholds made configuration too complicated. The maintainer supplied an explicit reporting-priority order and requested automatic defaults with editable per-device settings.
+- **Decision:** Default to the first two exposed signals in this order: temperature, illuminance, humidity, ultraviolet index, motion, acceleration, three-axis, contact, button activity, battery, water leak, smoke, pressure. Button activity combines exposed pushed/held/released/doubleTapped events. Show each device once with primary/secondary selectors and adjacent thresholds. Each signal has a shared 24-hour default; overrides are keyed by device and signal, so an override follows that signal if its role changes. Automatic restores ranking; None disables a slot. Reject duplicate/unsupported selections in effective configuration. The independent any-event device-silence threshold retains its existing setting/default of 24 hours pending testing.
+- **Alternatives:** Retaining prior manual configurations was declined by the maintainer. Automatically deriving the device-silence threshold from signal thresholds was deferred. Device-class inference and type-specific health profiles remain future work.
+- **Consequences:** Old selection/threshold settings are intentionally ignored using new setting names. Freshness checks now default to enabled and genuinely old event history may produce warnings immediately after activation. Matching event history, legacy any-event migrations, and independent cooldowns remain intact. Ranking identifies preferred reporting signals, not proof of device purpose. Quiet devices may need overrides or disabled checks; no pressure, smoke, water, or button event is assumed to occur daily merely because its default is 24 hours.
+- **Evidence:** Maintainer's ordered list and answers in this chat; local tests and remaining runtime checks recorded in `VERIFICATION.md`.
+- **Approval:** Maintainer approved ranked defaults, customization, added fallback signals, and replacement of previous configuration on 2026-10-17. This authorizes local implementation and review; deployment/publication remain separately authorized.
+- **Related decisions:** Supersedes selection/default choices in D-001 and D-002; retains D-002's independent cooldown and missing-history rules.
+
 ### D-002 - Explicit Opt-In Freshness Checks and Independent Cooldowns
 
 - **ID:** D-002
 - **Date:** 2026-10-11
-- **Status:** Accepted
+- **Status:** Superseded (selection/default rules by D-003; cooldown/observation rules retained)
 - **Owner:** Project maintainer
 - **Context:** Recent secondary events can coexist with a stale primary function or attribute. Mixed device purposes make one inferred freshness threshold unsafe, and one shared cooldown would suppress distinct problems or escalation.
 - **Decision:** Add optional per-device primary inactivity thresholds and per-selected-secondary-attribute freshness thresholds. New checks default to disabled. Any selected primary event refreshes the aggregate primary clock; secondary checks exclude primary attributes and evaluate individually. Prioritize device-silence alerts, deliver freshness warnings only while supported activity is recent, use independent 24-hour issue cooldowns, and combine newly due freshness issues per device per scheduled check. Preserve stable observation periods for missing history without creating event dates. Configuration changes reset check-specific observation/cooldown state while retaining genuine matching event history.
@@ -38,7 +52,7 @@ Each future record should include:
 
 - **ID:** D-001
 - **Date:** 2026-10-03
-- **Status:** Accepted
+- **Status:** Superseded by D-003
 - **Owner:** Project maintainer
 - **Context:** Device capabilities reveal which attributes exist but not which ones represent the device's purpose. Automatically treating temperature as primary, for example, would misclassify many multipurpose sensors.
 - **Decision:** Let users select zero or more primary attributes independently for each monitored device. Offer supported purpose-bearing attributes exposed by that device; exclude battery, power source, and tamper. Do not infer defaults. An unconfigured device continues any-event monitoring with a visible configuration warning.

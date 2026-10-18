@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.3.0 candidate (2026-10-17; local implementation, Hubitat validation pending)
+- Group each device once with editable primary/secondary selections and their hour thresholds in one responsive row.
+- Default to the first two exposed signals in this order: temperature, illuminance, humidity, ultraviolet index, motion, acceleration, 3-axis, contact, button activity, battery, water leak, smoke, pressure.
+- Share a 24-hour default per signal, with per-device/per-signal overrides. New freshness checks are enabled by default; None disables a selected slot. The existing app-wide device-silence threshold remains independent and defaults to 24 hours.
+- Replace legacy manual selections and threshold overrides as requested; retain genuine matching event history, any-event migrations, and independent cooldowns.
+- Treat pushed, held, released, and double-tapped events as a single Button activity signal. Add subscriptions/history for ultraviolet index, 3-axis, and pressure.
+- Keep other previously supported events as any-event liveness evidence. Do not infer a device's actual purpose from its automatic reporting priority.
+- This configuration change does not implement the roadmap's remaining health classes or complete its runtime-validation milestones.
+
 ## v2.2.1 candidate (2026-10-11; threshold input correction)
 - Align primary and secondary decimal-field minimums with Hubitat's 0.01-hour input increments so whole-hour values such as 48 pass browser validation.
 - New UI values start at 0.01 hours in hundredth-hour increments. Runtime parsing retains the earlier 0.001-hour minimum for existing saved settings; event monitoring, migrations, and cooldowns are unchanged.

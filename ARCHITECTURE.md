@@ -8,7 +8,7 @@ There is no separate server, client, database, model, retrieval layer, backgroun
 
 ## Components
 
-- **Preferences:** select battery-capable devices, optional per-device primary attributes and primary inactivity thresholds, optional secondary attributes with individual freshness thresholds, the existing any-event inactivity threshold, 15/30/60-minute check interval, debug logging, push-notification enablement, and an optional notification device. New freshness checks default to disabled.
+- **Preferences:** select battery-capable devices, then show each device in one section with a primary selector/threshold and secondary selector/threshold. Supported layout widths 4/2/4/2 request one responsive row. Automatic chooses the first two exposed signals in the approved priority order; overrides and None are supported. Both selected signals default to enabled at 24 hours. Global any-event inactivity, check interval, logging, and notification settings remain independent.
 - **Lifecycle:** `installed()` and `updated()` call `initialize()`; updates first remove existing schedules and subscriptions.
 - **Device filtering:** `monitoredDeviceList()` permits selected real hardware devices that expose `battery`. Virtual devices, custom drivers, and devices lacking that attribute are skipped.
 - **Subscriptions:** `initialize()` subscribes to each attribute in `MONITORED_ATTRIBUTES` that a monitored device exposes.
@@ -21,7 +21,7 @@ There is no separate server, client, database, model, retrieval layer, backgroun
 ## Data Flow
 
 1. The user selects devices and settings through Hubitat.
-2. Initialization filters the selection, validates each device's optional primary attributes, and subscribes to supported attributes exposed by each eligible device.
+2. Initialization filters the selection, resolves each device's primary/secondary reporting signals, and subscribes to supported attributes exposed by each eligible device, including ultravioletIndex, threeAxis, and pressure.
 3. Hubitat delivers valid events to `deviceEventHandler`, which updates the appropriate clocks and context without allowing older events to regress history.
 4. The scheduled check reconciles persisted state and evaluates device liveness independently from enabled freshness checks.
 5. Recovery removes only recovered issue cooldowns. Device silence suppresses freshness delivery but does not let a freshness cooldown suppress device-silence escalation. Otherwise, newly due freshness issues are combined into one warning. Delivery follows the user's existing notification settings.
@@ -40,7 +40,11 @@ The v2.2.0 candidate adds:
 - `issueAlerts`: independent last-warning dates keyed by enabled issue.
 - `health`: latest evaluated device classification (`reporting`, `unknown`, or `silence`), overdue issue keys, and evaluation time. This is a scheduled snapshot, not a new device event.
 
-Primary monitoring uses an aggregate clock: any selected primary attribute refreshes it. Secondary checks have individual clocks and cannot duplicate configured primary attributes. Blank or invalid optional thresholds disable their checks; an invalid any-event threshold falls back to 24 hours. Configuration changes may immediately expose genuinely old cached history; missing history receives a new observation period.
+Primary and secondary each represent one reporting signal. A normal signal maps to one real attribute; Button activity maps to the device's exposed pushed/held/released/doubleTapped attributes, and the latest event from any of them refreshes that signal. Secondary choices exclude the effective primary. Ranked defaults identify reporting preferences, not actual device purpose.
+
+SIGNAL_LABELS defines the priority order; SIGNAL_DEFAULT_HOURS defines shared per-signal defaults, currently 24 for all 13 signals. New reportingSignal_<id>_<role> settings select Automatic, None, or an exposed signal. New reportingHours_<id>_<signal> overrides follow the signal if its role changes. Missing/invalid new hours use the signal's default; None disables a slot. Legacy primaryAttributes/secondaryAttributes/primaryThreshold/attributeThreshold settings are intentionally ignored under D-003, applying fresh ranked defaults to existing installations while retaining the old values for rollback.
+
+The independent any-event threshold remains unchanged at its existing setting/default of 24 hours. A primary override of 48 hours does not raise the device-silence threshold. Configuration changes may immediately expose genuinely old cached history; missing history receives a new observation period.
 
 v2.2.1 aligns primary/secondary decimal input ranges to `0.01..1000000`. A `0.001` minimum combined with Hubitat's 0.01 step offset the browser's valid values and rejected whole hours. The runtime's earlier 0.001-hour minimum remains supported for persisted settings; monitoring and state semantics are unchanged.
 
@@ -58,7 +62,7 @@ Data remains within the user's Hubitat environment except when the user configur
 
 - Scheduling failures are caught and logged as errors.
 - Unsupported devices and attributes are skipped; debug logging can explain filtered selections.
-- Devices without configured primary attributes continue any-event monitoring and produce a configuration warning rather than receiving inferred defaults.
+- Devices with unavailable or disabled reporting slots continue any-event monitoring. Effective overrides are validated against exposed ranked signals; invalid/unavailable or duplicate secondary choices fall back to the next available ranked signal. No primary-purpose inference is performed.
 - Events without a device ID are ignored with a warning.
 - Missing notification-device configuration produces a warning instead of a delivery attempt.
 - Missing optional context is displayed as `N/A` rather than preventing evaluation.
@@ -66,4 +70,4 @@ Data remains within the user's Hubitat environment except when the user configur
 
 Runtime observability is provided by Hubitat logs and notification outcomes. Manual Hubitat verification should cover installation, update/resubscription, event receipt, scheduled evaluation, filtering, cooldown behavior, and notification configuration for behavior-changing releases.
 
-Local simulated checks, successful Hubitat compilation/deployment, and the activation/rollback procedure are recorded in `VERIFICATION.md`. The candidate's saved source exactly matches the local artifact; installed-instance activation and runtime validation remain pending. A source update alone is not evidence that installed instances have resubscribed or adopted new configuration.
+Local simulated checks and the activation/rollback procedure are recorded in `VERIFICATION.md`. The v2.3.0 candidate is local and has not been compiled/deployed on Hubitat. Successful v2.2.1 compilation/readback is historical evidence only. A source update alone is not evidence that installed instances have resubscribed or adopted new configuration.

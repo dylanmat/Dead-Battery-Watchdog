@@ -7,8 +7,9 @@
 - Preserve Hubitat lifecycle behavior, settings compatibility, and persisted state migrations unless the approved change explicitly replaces them.
 - Use defensive helpers for driver properties and optional attributes. Do not assume every battery-capable device exposes temperature or `lastBattery`.
 - Key `state.deviceStatus` by device ID string and keep state-field meaning consistent across initialization, event handling, and scheduled checks.
-- Validate per-device primary selections against the supported primary candidate list and attributes currently exposed by the device. Do not infer primary purpose or migrate any-event timestamps into primary state.
+- Resolve primary/secondary reporting signals using the approved ranking and exposed attributes, with validated single-slot overrides. Do not infer actual device purpose from ranking or migrate any-event timestamps into primary state. Button activity aggregates only exposed button event attributes.
 - Keep per-attribute histories bounded to exposed supported attributes, validate secondary selections, and exclude configured primary attributes from secondary checks. Preserve monotonic timestamps and stable missing-history observation periods.
+- Use one device group and two adjacent selection/threshold pairs. Share per-signal default hours; store new overrides per device/signal. Preserve the 0.01-hour UI step alignment and keep old configuration replacement explicit in migration documentation.
 - Keep device-silence and per-issue cooldowns independent. Unrelated activity must not reset stale-attribute cooldowns; freshness delivery must not suppress device-silence escalation.
 - Use `formatLogTimestamp(Date)` for user-facing and debug dates and `formatUnixTimestamp(value)` for validated battery-replacement timestamps.
 - Use `battery` or `batteryLevel` for percentage and `lastBattery` only for replacement time.
@@ -40,7 +41,8 @@ For app behavior changes, manually exercise relevant scenarios on Hubitat where 
 - Fresh installation and update/resubscription behavior.
 - Real hardware filtering and rejection of virtual, custom, or non-battery devices.
 - Supported event handling and updates to `lastAnyEvent`, configured primary-event state, and temperature-specific state.
-- Primary/secondary selection changes, threshold changes, removal, missing cached states, and unconfigured-device warnings; disabled freshness checks preserve any-event alert behavior.
+- Automatic ranking, customized/removed/unavailable selections, duplicate prevention, signal-specific threshold overrides, missing cached states, and legacy configuration replacement. None disables a slot while preserving any-event monitoring.
+- Grouped device controls, 24-hour defaults, Button activity aggregation/recovery, and ultraviolet/three-axis/pressure subscriptions. Do not claim browser rendering from a simulated input-definition test.
 - Independent primary/attribute classification, device-silence precedence, combined warnings, cooldowns, escalation, recovery between checks, and stable observation periods.
 - Scheduled checks at supported intervals, threshold comparison, and 24-hour alert cooldown.
 - Notifications enabled with and without a selected notification device.

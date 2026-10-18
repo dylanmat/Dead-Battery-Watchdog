@@ -1,9 +1,9 @@
 import groovy.transform.Field
 
 @Field final String APP_NAME    = "Dead Battery Watchdog"
-@Field final String APP_VERSION = "2.2.1"
+@Field final String APP_VERSION = "2.3.0"
 @Field final String APP_BRANCH  = "main"          // "main"
-@Field final String APP_UPDATED = "2026-10-11"    // ISO date is clean
+@Field final String APP_UPDATED = "2026-10-17"
 @Field final List<String> MONITORED_ATTRIBUTES = [
     "temperature",
     "humidity",
@@ -24,26 +24,23 @@ import groovy.transform.Field
     "illuminance",
     "smoke",
     "carbonMonoxide",
-    "powerSource"
+    "powerSource",
+    "ultravioletIndex",
+    "threeAxis",
+    "pressure"
 ]
-@Field final List<String> PRIMARY_ATTRIBUTE_CANDIDATES = [
-    "temperature",
-    "humidity",
-    "contact",
-    "motion",
-    "acceleration",
-    "water",
-    "pushed",
-    "held",
-    "released",
-    "doubleTapped",
-    "switch",
-    "lock",
-    "presence",
-    "activity",
-    "illuminance",
-    "smoke",
-    "carbonMonoxide"
+@Field final List<String> BUTTON_ATTRIBUTES = ["pushed", "held", "released", "doubleTapped"]
+// Insertion order defines the approved default primary/secondary reporting signals.
+@Field final Map<String, String> SIGNAL_LABELS = [
+    temperature: "Temperature", illuminance: "Illuminance", humidity: "Humidity",
+    ultravioletIndex: "Ultraviolet", motion: "Motion", acceleration: "Acceleration",
+    threeAxis: "3-axis", contact: "Contact", buttonActivity: "Button activity",
+    battery: "Battery", water: "Water leak", smoke: "Smoke", pressure: "Pressure"
+]
+@Field final Map<String, Integer> SIGNAL_DEFAULT_HOURS = [
+    temperature: 24, illuminance: 24, humidity: 24, ultravioletIndex: 24,
+    motion: 24, acceleration: 24, threeAxis: 24, contact: 24, buttonActivity: 24,
+    battery: 24, water: 24, smoke: 24, pressure: 24
 ]
 
 definition(
@@ -67,32 +64,20 @@ preferences {
     }
     def configuredDevices = monitoredDeviceList()
     if (configuredDevices) {
-        section("Select each device's primary function") {
-            paragraph "An event from any selected primary attribute refreshes the primary-function clock. Optional freshness checks warn while other supported events remain recent. Rarely used contacts and buttons may naturally remain quiet."
-            configuredDevices.each { device ->
-                def availableAttributes = availablePrimaryAttributes(device)
-                if (availableAttributes) {
-                    input primaryAttributeSettingName(device), "enum", title: "${device.displayName} primary attributes", options: availableAttributes, multiple: true, required: false, submitOnChange: true
-                    if (configuredPrimaryAttributes(device)) {
-                        input "primaryThreshold_${deviceKey(device)}", "decimal", title: "${device.displayName} primary inactivity threshold (hours; blank disables)", required: false, range: "0.01..1000000"
-                    }
-                    if (!configuredPrimaryAttributes(device)) {
-                        paragraph "${device.displayName} has no primary attributes selected. Any-event monitoring will continue."
-                    }
-                } else {
-                    paragraph "${device.displayName} exposes no supported primary-function attributes. Any-event monitoring will continue."
-                }
-            }
+        section("Device monitoring") {
+            paragraph "Each device defaults to the first two available reporting signals in priority order, at 24 hours each. Customize either selection or its hours below; None disables that check. Button activity includes pushed, held, released, and double-tapped events. Quiet devices may need longer thresholds."
         }
-        section("Optional secondary-attribute freshness") {
-            paragraph "Select secondary attributes and set a positive threshold for each. Blank thresholds disable checks. Cached values do not prove that a device is reachable."
-            configuredDevices.each { device ->
-                def secondaryOptions = availableSecondaryAttributes(device)
-                if (secondaryOptions) {
-                    input "secondaryAttributes_${deviceKey(device)}", "enum", title: "${device.displayName} secondary attributes", options: secondaryOptions, multiple: true, required: false, submitOnChange: true
-                    configuredSecondaryAttributes(device).each { attributeName ->
-                        input "attributeThreshold_${deviceKey(device)}_${attributeName}", "decimal", title: "${device.displayName} ${attributeName} freshness threshold (hours; blank disables)", required: false, range: "0.01..1000000"
-                    }
+        configuredDevices.each { device ->
+            section(device.displayName) {
+                def primary = configuredSignal(device, "primary")
+                def secondary = configuredSignal(device, "secondary")
+                input signalSettingName(device, "primary"), "enum", title: "Primary attribute", options: signalOptions(device, "primary"), defaultValue: "auto", required: true, submitOnChange: true, width: 4
+                if (primary) {
+                    input signalHoursSettingName(device, primary), "decimal", title: "Threshold (hours)", defaultValue: SIGNAL_DEFAULT_HOURS[primary], required: true, range: "0.01..1000000", width: 2
+                }
+                input signalSettingName(device, "secondary"), "enum", title: "Secondary attribute", options: signalOptions(device, "secondary"), defaultValue: "auto", required: true, submitOnChange: true, width: 4
+                if (secondary) {
+                    input signalHoursSettingName(device, secondary), "decimal", title: "Threshold (hours)", defaultValue: SIGNAL_DEFAULT_HOURS[secondary], required: true, range: "0.01..1000000", width: 2
                 }
             }
         }
@@ -152,11 +137,6 @@ def initialize() {
     }
     if (skippedNonBatteryDevices && enableDebug) {
         log.debug "Skipping hardware devices without battery capability: ${skippedNonBatteryDevices.collect { it.displayName }.join(', ')}"
-    }
-
-    def unconfiguredDevices = devices.findAll { !configuredPrimaryAttributes(it) }
-    if (unconfiguredDevices) {
-        log.warn "Primary-function tracking is not configured for: ${unconfiguredDevices.collect { it.displayName }.join(', ')}. Any-event monitoring will continue."
     }
 
     devices.each { device ->
@@ -241,10 +221,11 @@ def deviceEventHandler(evt) {
     // A real recovery between scheduled checks must clear only its own cooldown.
     def issueAlerts = status.issueAlerts instanceof Map ? status.issueAlerts : [:]
     def monitors = status.freshnessMonitors instanceof Map ? status.freshnessMonitors : [:]
-    ["attribute:${evt.name}".toString(), primaryAttributes.contains(evt.name?.toString()) ? "primary" : null].findAll { it }.each { issueKey ->
-        def monitor = monitors[issueKey] instanceof Map ? monitors[issueKey] : [:]
+    monitors.each { issueKey, entry ->
+        def monitor = entry instanceof Map ? entry : [:]
+        def matches = issueKey == "primary" ? primaryAttributes.contains(evt.name?.toString()) : monitor.attributes?.contains(evt.name?.toString())
         def threshold = asLong(monitor.threshold)
-        if (threshold && threshold > 0 && new Date().time - now.time <= threshold) issueAlerts.remove(issueKey)
+        if (matches && threshold && threshold > 0 && new Date().time - now.time <= threshold) issueAlerts.remove(issueKey)
     }
     status.issueAlerts = issueAlerts
 
@@ -309,7 +290,7 @@ def checkDevices() {
                 if (due) {
                     def details = due.collect { issue ->
                         def evidence = issue.lastEvent ? "last event @ ${formatLogTimestamp(issue.lastEvent)}" : "no event observed since monitoring began @ ${formatLogTimestamp(issue.started)}"
-                        def explanation = issue.key == "primary" ? "possible function or driver issue" : "reporting is stale; this alone does not establish device failure"
+                        def explanation = issue.key == "primary" ? "primary reporting signal is stale; other supported events continue" : "reporting is stale; this alone does not establish device failure"
                         return "${issue.label}: ${evidence}; ${explanation}."
                     }.join("\n")
                     deliverWarning("${device.displayName} freshness warning:\n${details}\nOther supported activity remains recent: ${formatEventSummary(status)} @ ${formatLogTimestamp(asDate(status.lastAnyEvent))}.")
@@ -344,11 +325,11 @@ private Map evaluateHealth(Map status, Long deadThreshold, Date now) {
     def issues = []
     def monitors = status.freshnessMonitors instanceof Map ? status.freshnessMonitors : [:]
     monitors.each { key, monitor ->
-        def lastEvent = key == "primary" ? validEventDate(status.lastPrimaryEvent, now) : validEventDate(status.attributeHistory?.get(monitor.attribute)?.date, now)
+        def lastEvent = key == "primary" ? validEventDate(status.lastPrimaryEvent, now) : latestDate((monitor.attributes ?: [monitor.attribute]).collect { status.attributeHistory?.get(it)?.date }, null, now)
         def started = validEventDate(monitor.started, now) ?: now
         def threshold = asLong(monitor.threshold)
         if (threshold && threshold > 0 && now.time - (lastEvent ?: started).time > threshold) {
-            issues << [key: key, label: key == "primary" ? "Primary function (${status.primaryAttributes.join(', ')})" : monitor.attribute, lastEvent: lastEvent, started: started]
+            issues << [key: key, label: key == "primary" ? "Primary reporting signal (${status.primaryAttributes.join(', ')})" : (SIGNAL_LABELS[monitor.attribute] ?: monitor.attribute), lastEvent: lastEvent, started: started]
         }
     }
     return [device: deviceState, issues: issues]
@@ -389,13 +370,14 @@ private Map reconciledDeviceStatus(def device, def existing, Date now) {
     status.putAll(primary)
 
     def desired = [:]
-    def primaryThreshold = positiveHoursMillis(settings?.get("primaryThreshold_${deviceKey(device)}".toString()))
+    def primarySignal = configuredSignal(device, "primary")
+    def primaryThreshold = configuredSignalThreshold(device, primarySignal)
     if (primary.primaryAttributes && primaryThreshold) {
-        desired.primary = [threshold: primaryThreshold, attributes: primary.primaryAttributes]
+        desired.primary = [threshold: primaryThreshold, attributes: primary.primaryAttributes, signal: primarySignal]
     }
     configuredSecondaryAttributes(device).each { attributeName ->
-        def threshold = positiveHoursMillis(settings?.get("attributeThreshold_${deviceKey(device)}_${attributeName}".toString()))
-        if (threshold) desired["attribute:${attributeName}".toString()] = [threshold: threshold, attribute: attributeName]
+        def threshold = configuredSignalThreshold(device, attributeName)
+        if (threshold) desired["attribute:${attributeName}".toString()] = [threshold: threshold, attribute: attributeName, attributes: signalAttributes(device, attributeName)]
     }
     def previousMonitors = status.freshnessMonitors instanceof Map ? status.freshnessMonitors : [:]
     def previousAlerts = status.issueAlerts instanceof Map ? status.issueAlerts : [:]
@@ -403,7 +385,7 @@ private Map reconciledDeviceStatus(def device, def existing, Date now) {
     def alerts = [:]
     desired.each { key, config ->
         def previous = previousMonitors[key] instanceof Map ? previousMonitors[key] : [:]
-        def unchanged = previous.threshold == config.threshold && previous.attributes == config.attributes && previous.attribute == config.attribute
+        def unchanged = previous.threshold == config.threshold && previous.attributes == config.attributes && previous.attribute == config.attribute && previous.signal == config.signal
         monitors[key] = config + [started: unchanged ? (validEventDate(previous.started, now) ?: now) : now]
         if (unchanged && validEventDate(previousAlerts[key], now)) alerts[key] = validEventDate(previousAlerts[key], now)
     }
@@ -424,16 +406,48 @@ private Long positiveHoursMillis(def value) {
     }
 }
 
-private List<String> availableSecondaryAttributes(def device) {
-    def primary = configuredPrimaryAttributes(device)
-    return MONITORED_ATTRIBUTES.findAll { hasAttribute(device, it) && !primary.contains(it) }
+private List<String> availableSignals(def device) {
+    return SIGNAL_LABELS.keySet().findAll { signalAttributes(device, it) } as List<String>
 }
 
 private List<String> configuredSecondaryAttributes(def device) {
-    def value = settings?.get("secondaryAttributes_${deviceKey(device)}".toString())
-    def values = value instanceof Collection ? value : (value ? [value] : [])
-    def names = values.collect { it?.toString() }
-    return availableSecondaryAttributes(device).findAll { names.contains(it) }
+    def signal = configuredSignal(device, "secondary")
+    return signal ? [signal] : []
+}
+
+private List<String> signalAttributes(def device, String signal) {
+    if (!SIGNAL_LABELS.containsKey(signal)) return []
+    return (signal == "buttonActivity" ? BUTTON_ATTRIBUTES : [signal]).findAll { hasAttribute(device, it) }
+}
+
+private String signalSettingName(def device, String role) {
+    return "reportingSignal_${deviceKey(device)}_${role}"
+}
+
+private String signalHoursSettingName(def device, String signal) {
+    return "reportingHours_${deviceKey(device)}_${signal}"
+}
+
+private String configuredSignal(def device, String role) {
+    def available = availableSignals(device)
+    if (role == "secondary") available = available.findAll { it != configuredSignal(device, "primary") }
+    def selected = settings?.get(signalSettingName(device, role))?.toString()
+    if (selected == "none") return null
+    return available.contains(selected) ? selected : (available ? available[0] : null)
+}
+
+private Map<String, String> signalOptions(def device, String role) {
+    def available = availableSignals(device)
+    if (role == "secondary") available = available.findAll { it != configuredSignal(device, "primary") }
+    def options = [auto: "Automatic (${available ? SIGNAL_LABELS[available[0]] : 'None available'})", none: "None"]
+    available.each { options[it] = SIGNAL_LABELS[it] }
+    return options
+}
+
+private Long configuredSignalThreshold(def device, String signal) {
+    if (!signal) return null
+    def value = settings?.get(signalHoursSettingName(device, signal))
+    return positiveHoursMillis(value) ?: positiveHoursMillis(SIGNAL_DEFAULT_HOURS[signal])
 }
 
 private safeCurrentState(def device, String attributeName) {
@@ -465,26 +479,16 @@ private String deviceKey(def device) {
     return device?.id?.toString()
 }
 
-private String primaryAttributeSettingName(def device) {
-    def key = deviceKey(device)
-    return key ? "primaryAttributes_${key}" : null
-}
-
-private List<String> availablePrimaryAttributes(def device) {
-    return PRIMARY_ATTRIBUTE_CANDIDATES.findAll { hasAttribute(device, it) }
-}
-
 private List<String> configuredPrimaryAttributes(def device) {
-    def settingName = primaryAttributeSettingName(device)
-    def configured = settingName ? settings?.get(settingName) : null
-    return normalizePrimaryAttributes(configured).findAll { hasAttribute(device, it) }
+    def signal = configuredSignal(device, "primary")
+    return signal ? signalAttributes(device, signal) : []
 }
 
 private List<String> normalizePrimaryAttributes(def value) {
     if (!value) return []
     def values = value instanceof Collection ? value : [value]
     def names = values.collect { it?.toString() }
-    return PRIMARY_ATTRIBUTE_CANDIDATES.findAll { names.contains(it) }
+    return MONITORED_ATTRIBUTES.findAll { names.contains(it) }
 }
 
 private Map reconciledPrimaryTracking(def device, def existingStatus, Date now = new Date()) {

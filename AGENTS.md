@@ -22,9 +22,10 @@ For project-document conflicts, apply `SECURITY.md`, `STANDARDS.md`, `ARCHITECTU
 
 ## Current Behavior
 
-- Local and deployed app code are the `2.2.1` candidate. Hubitat compilation and exact-source readback passed on 2026-10-11; installed-instance activation/runtime validation remain pending. The patch aligns decimal-field minimums to 0.01-hour UI increments while retaining existing runtime threshold compatibility. These checks do not complete roadmap stages.
+- Local app code is the `2.3.0` candidate prepared on 2026-10-17, not yet deployed or compiled on Hubitat. The last verified deployment was `2.2.1` on 2026-10-11. Local tests do not complete runtime roadmap milestones.
 - The app subscribes to supported event attributes for selected real hardware devices with the Hubitat `battery` capability and records the most recent parsed event timestamp in `lastAnyEvent`.
-- Users can optionally select one or more exposed functional attributes per device as its primary function. Any matching primary event refreshes the aggregate primary clock; unconfigured devices continue any-event monitoring with a warning. Optional primary inactivity thresholds and individually configured secondary freshness thresholds are disabled by default.
+- Each device appears once with primary/secondary selectors and thresholds. Automatic selects the first two exposed reporting signals in order: temperature, illuminance, humidity, ultravioletIndex, motion, acceleration, threeAxis, contact, buttonActivity, battery, water, smoke, pressure. Each defaults to 24 hours and is editable; None disables a slot. Button activity aggregates exposed pushed/held/released/doubleTapped events. Ranking identifies reporting priority, not actual device purpose.
+- The approved migration replaces prior selections/threshold overrides using new reportingSignal_<id>_<role> and reportingHours_<id>_<signal> settings, while retaining genuine matching event history. Per-signal hour overrides follow the signal across role changes. Duplicate/unavailable selections fall back to the remaining ranking. The independent any-event threshold remains at its existing setting/default of 24 hours for testing.
 - Virtual devices, custom devices, and devices without `battery` are skipped during subscription, event handling, and scheduled checks.
 - `checkDevices()` runs on a scheduled interval of 15, 30, or 60 minutes.
 - A device alerts when elapsed time since the last supported device event exceeds `inactiveThreshold`.
@@ -41,7 +42,7 @@ For project-document conflicts, apply `SECURITY.md`, `STANDARDS.md`, `ARCHITECTU
 - `lastEventName`: name of the latest supported event.
 - `lastEventValue`: value of the latest supported event.
 - `lastEventDisplayName`: display name from the latest supported event.
-- `primaryAttributes`: validated user-selected attributes representing the device's primary function.
+- `primaryAttributes`: real exposed attributes backing the effective primary reporting signal; one attribute except for grouped button activity.
 - `lastPrimaryEvent`: timestamp of the latest configured primary-function event.
 - `lastPrimaryEventName`: name of the latest configured primary-function event.
 - `lastPrimaryEventValue`: value of the latest configured primary-function event.
@@ -50,7 +51,7 @@ For project-document conflicts, apply `SECURITY.md`, `STANDARDS.md`, `ARCHITECTU
 - `lastAlert`: timestamp of the last dead battery alert.
 - `attributeHistory`: bounded latest valid event date/value for each exposed supported attribute.
 - `observationStarted`: stable observation start when any-event history is missing.
-- `freshnessMonitors`: enabled checks with thresholds, selection identity, and stable observation starts.
+- `freshnessMonitors`: enabled checks with thresholds, selection identity, backing attribute lists, and stable observation starts.
 - `issueAlerts`: per-primary/per-attribute warning timestamps.
 - `health`: most recent scheduled device/issue classification and evaluation date.
 
@@ -69,11 +70,11 @@ Older versions stored battery percentage in `lastBattery`. Do not use persisted 
 - Use defensive helpers for device attributes because not every monitored battery hardware device exposes `temperature` or `lastBattery`.
 - Keep `battery` for battery level and `lastBattery` for the battery replacement timestamp.
 - Treat battery percentage as supporting evidence only, not proof that a sleepy Zigbee device is alive.
-- Do not infer primary functions or migrate `lastAnyEvent`, `lastReport`, or `lastChange` into `lastPrimaryEvent`.
+- Use the explicitly approved ranking for reporting defaults under D-003, without claiming to infer device purpose. Do not migrate `lastAnyEvent`, `lastReport`, or `lastChange` into `lastPrimaryEvent`; seed only matching real attribute events.
 
 ## Planned v2 Direction
 
-The v2.2.1 candidate uses supported Hubitat events as the liveness signal and separates device silence from stale primary functions and secondary attributes. Missing history uses observation periods without invented timestamps. Future stages add health classes, recommended threshold profiles, alert severity, confidence levels, and manual-test workflows. v2.1 and v2.2 completion markers await Hubitat evidence.
+The v2.3.0 candidate adds approved ranked defaults and unified device controls to any-event liveness and independent freshness checks. Missing history uses observation periods without invented timestamps. The version number does not mark the full v2.3 health-class roadmap stage complete. Health classes, class-specific thresholds, severity labels, confidence, and manual-test workflows remain future work; v2.1/v2.2 completion markers await Hubitat evidence.
 
 Follow `ROADMAP.md` as the canonical plan. Do not imply that planned behavior is already released. When a roadmap stage is completed, mark its heading with `Complete YYYY-MM-DD`.
 

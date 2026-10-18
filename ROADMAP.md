@@ -1,6 +1,6 @@
 # Dead Battery Watchdog Roadmap
 
-Dead Battery Watchdog v2.1.0 is an event-liveness watchdog: it monitors selected real hardware devices with the Hubitat `battery` capability, tracks user-selected primary-function events separately, and alerts when a device stops reporting any supported Hubitat events. Earlier v1 releases used temperature reports as the liveness signal.
+Dead Battery Watchdog monitors supported events from selected battery-capable hardware devices and separates device silence from stale reporting signals. The local v2.3.0 candidate adds the maintainer-approved reporting ranking, shared 24-hour per-signal defaults, and unified device controls; the last verified deployed code was v2.2.1. Earlier v1 releases used temperature reports as the liveness signal.
 
 The v2 roadmap continues evolving the project into broader Zigbee battery-device health monitoring. The main design shift is that a device should be considered likely dead only when useful event streams go silent, not merely because one attribute stops updating.
 
@@ -13,14 +13,13 @@ Multipurpose devices can also keep reporting contact, motion, acceleration, butt
 The v2 model separates device liveness from individual attribute freshness:
 
 - Device dead or offline: no useful events of any kind for longer than the configured threshold.
-- Primary function stale: the device is alive, but its main purpose has not reported recently.
+- Primary reporting signal stale: the device reports other supported events, but its selected primary reporting signal is overdue. This does not establish failure of its actual main purpose.
 - Attribute stale: a secondary attribute such as temperature or battery has stopped updating while other events continue.
 
 ## Core Concepts
 
 - `lastAnyEvent`: the latest known event from the device, regardless of attribute.
-- Primary attributes: the events that prove the device's main function is working, such as contact, motion, acceleration, water, pushed, held, temperature, or humidity.
-- Secondary attributes: useful supporting signals such as temperature, humidity, and battery when they are not the device's primary purpose.
+- Primary/secondary reporting signals: the highest/next available signal in the maintainer's ranking or a customized override. The current candidate does not infer actual device purpose. Later purpose-based health profiles remain proposed work.
 - Stale attribute: an attribute that has not reported within its threshold while the device still appears alive through other events.
 - Health class: a per-device profile type that defines expected behavior and default thresholds.
 - Threshold: the maximum expected time between events before a health state changes.
@@ -61,6 +60,8 @@ Alert language should distinguish:
 - Battery stale: battery reporting is stale or unreliable, but not proof of device failure by itself.
 
 ### v2.3 - Add Health Classes and Default Thresholds
+
+Partial direction approved 2026-10-17: the local v2.3.0 candidate simplifies configuration using ranked reporting signals and 24-hour defaults with overrides, documented in D-003. Automatic order is temperature, illuminance, humidity, ultraviolet index, motion, acceleration, three-axis, contact, button activity, battery, water leak, smoke, pressure. Prior configuration is replaced as requested. The independent device-silence threshold retains its existing setting/default of 24 hours pending testing. No health classes or class-specific thresholds are implemented, so this stage remains incomplete. The class proposals below are future work and must be revisited against the approved simplification before implementation.
 
 Add per-device health classes with default thresholds that users can override. Initial classes should cover common battery-device patterns:
 
